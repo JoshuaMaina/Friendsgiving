@@ -7,6 +7,12 @@ import { emptyState, type State } from "./state";
 const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
 const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 const redis = url && token ? new Redis({ url, token }) : null;
+console.log(
+  "[fg] database settings seen:",
+  JSON.stringify(Object.fromEntries(
+    ["KV_REST_API_URL", "KV_REST_API_TOKEN", "UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "REDIS_URL", "KV_URL"].map((k) => [k, !!process.env[k]]),
+  )),
+);
 
 const KEY = "fg:state";
 const LOCK = "fg:lock";
