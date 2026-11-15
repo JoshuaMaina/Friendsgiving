@@ -34,6 +34,9 @@ function adminView(s: State) {
   });
   return {
     usingRedis: usingRedis(),
+    envSeen: Object.fromEntries(
+      ["KV_REST_API_URL", "KV_REST_API_TOKEN", "UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "REDIS_URL", "KV_URL"].map((k) => [k, !!process.env[k]]),
+    ),
     players,
     scores: s.scores,
     shirtSwap: swap(s.shirtSwap, players.filter((p) => p.shirt).map((p) => p.id)),
