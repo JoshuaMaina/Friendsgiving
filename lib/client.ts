@@ -41,8 +41,12 @@ export function usePoll<T>(url: string | null, ms = 3000) {
     alive.current = true;
     if (!url) return;
     let timer: ReturnType<typeof setTimeout>;
+    let first = true;
     const load = async () => {
-      if (document.visibilityState === "visible") {
+      clearTimeout(timer);
+      // Always load once; after that, only poll while the page is visible.
+      if (first || document.visibilityState === "visible") {
+        first = false;
         try {
           const r = await fetch(url, { cache: "no-store" });
           if (r.ok && alive.current) setData(await r.json());
@@ -50,10 +54,13 @@ export function usePoll<T>(url: string | null, ms = 3000) {
       }
       if (alive.current) timer = setTimeout(load, ms);
     };
+    const onVisible = () => document.visibilityState === "visible" && load();
+    document.addEventListener("visibilitychange", onVisible);
     load();
     return () => {
       alive.current = false;
       clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [url, ms, tick]);
   return { data, refresh: () => setTick((t) => t + 1) };
