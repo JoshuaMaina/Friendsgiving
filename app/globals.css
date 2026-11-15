@@ -1,0 +1,156 @@
+/* Sizes are in rem/em so text follows the user's OS text scale (see <meta name="text-scale">).
+   The root font size is deliberately left to the browser. */
+:root {
+  --green: #13261f;
+  --green-2: #1c3a2f;
+  --cream: #f8f3e6;
+  --gold: #e2b33c;
+  --red: #b8322a;
+  --soft: #cfdcd3;
+  --ink: #3e4a44;
+  --radius: 1.25rem;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--green);
+  color: var(--cream);
+  font-family: "Nunito Sans", system-ui, sans-serif;
+  line-height: 1.5;
+  min-block-size: 100dvh;
+  overflow-wrap: break-word;
+}
+h1, h2, h3 { font-family: "Fredoka", system-ui, sans-serif; margin: 0 0 0.5rem; line-height: 1.1; text-wrap: balance; }
+h1 { font-size: clamp(2.25rem, 1.5rem + 4vw, 4.5rem); font-weight: 600; }
+h2 { font-size: 1.75rem; font-weight: 600; }
+h3 { font-size: 1.25rem; font-weight: 600; }
+p { margin: 0 0 0.625rem; text-wrap: pretty; }
+a { color: var(--gold); }
+
+/* Focus: a clear ring with 3:1+ contrast on every background used here */
+:where(a:any-link, button, input, select, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+:where(.card.light, .card.gold, .team-badge) :focus-visible { outline-color: var(--green); }
+
+/* Static snow: decorative, no motion, so nothing needs a pause control */
+.snow {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .35;
+  background-image:
+    radial-gradient(3px 3px at 20px 30px, #fff, transparent),
+    radial-gradient(2px 2px at 140px 80px, #fff, transparent),
+    radial-gradient(3px 3px at 260px 160px, #fff, transparent),
+    radial-gradient(2px 2px at 60px 220px, #fff, transparent),
+    radial-gradient(2px 2px at 200px 290px, #fff, transparent);
+  background-size: 320px 320px;
+}
+
+.wrap { position: relative; z-index: 1; max-inline-size: 40rem; margin: 0 auto; padding: 1.75rem 1.125rem 5rem; }
+.wrap.wide { max-inline-size: 70rem; }
+.eyebrow { font-size: 0.8125rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-block-end: 0.5rem; }
+.lede { font-size: 1.1875rem; color: var(--soft); }
+.muted { color: var(--soft); font-size: 0.9375rem; }
+.small { font-size: 0.875rem; }
+.visually-hidden {
+  position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+
+.card { background: var(--green-2); border-radius: var(--radius); padding: 1.25rem; margin: 0.875rem 0; border: 1px solid rgba(248,243,230,.08); }
+.card.light { background: var(--cream); color: var(--green); }
+.card.light .muted { color: var(--ink); }
+.card.gold { background: var(--gold); color: var(--green); }
+.card.red { background: var(--red); color: var(--cream); }
+.grid2, .grid3 { display: grid; gap: 0.75rem; }
+.grid2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
+.grid3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); }
+.row { display: flex; gap: 0.625rem; align-items: center; flex-wrap: wrap; }
+.between { justify-content: space-between; }
+
+.btn {
+  appearance: none; border: 0; cursor: pointer; font: 600 1.0625rem "Fredoka", system-ui, sans-serif;
+  background: var(--gold); color: var(--green); padding: 0.875rem 1.375rem; border-radius: 999px;
+  min-block-size: 3rem; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center;
+}
+.btn:disabled { opacity: .55; cursor: default; }
+.btn.block { display: flex; inline-size: 100%; }
+.btn.red { background: var(--red); color: var(--cream); }
+.btn.ghost { background: transparent; color: var(--cream); border: 2px solid rgba(248,243,230,.45); }
+.btn.sm { padding: 0.5rem 0.875rem; font-size: 0.9375rem; min-block-size: 2.75rem; }
+.btn[aria-pressed="true"] { background: var(--gold); color: var(--green); border-color: var(--gold); }
+.btn.ghost[aria-pressed="true"]::before { content: "✓ "; }
+.card.light .btn.ghost { color: var(--green); border-color: rgba(19,38,31,.4); }
+
+/* Forms */
+label, legend { display: block; font-weight: 700; margin: 0.875rem 0 0.375rem; }
+fieldset { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
+input[type=text], input[type=password], select {
+  inline-size: 100%; font: inherit; font-size: max(1rem, 1em); padding: 0.8rem 0.875rem; border-radius: 0.875rem;
+  border: 2px solid rgba(248,243,230,.3); background: rgba(0,0,0,.2); color: var(--cream);
+}
+input:user-invalid { border-color: #ff9b8f; }
+.hint { font-size: 0.875rem; color: var(--soft); margin: 0.25rem 0 0; }
+.field-error { font-size: 0.9375rem; color: #ffb3aa; font-weight: 700; margin: 0.375rem 0 0; }
+.card.light input, .card.light select { background: #fff; color: var(--green); border-color: rgba(19,38,31,.25); color-scheme: light; }
+select option { color: #13261f; }
+.check { display: flex; gap: 0.75rem; align-items: flex-start; font-weight: 700; margin: 0.875rem 0 0; cursor: pointer; }
+.check input { inline-size: 1.5rem; block-size: 1.5rem; margin: 0.0625rem 0 0; accent-color: var(--gold); flex: none; }
+.radios { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.radios label { margin: 0; display: inline-flex; gap: 0.4rem; align-items: center; padding: 0.5rem 0.875rem; border-radius: 999px; border: 2px solid rgba(248,243,230,.35); min-block-size: 2.75rem; cursor: pointer; }
+.radios label:has(input:checked) { background: var(--gold); color: var(--green); border-color: var(--gold); }
+.radios input { accent-color: var(--green); inline-size: 1.125rem; block-size: 1.125rem; margin: 0; }
+
+.team-badge { border-radius: var(--radius); padding: 1.625rem 1.25rem; text-align: center; }
+.team-badge .emoji { font-size: 3.5rem; line-height: 1; }
+.team-badge h2 { margin: 0.625rem 0 0; font-size: clamp(2.25rem, 1.75rem + 3vw, 3.75rem); }
+
+.secret { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.25rem; padding: 1.25rem 0.5rem 0.25rem; }
+.big-word { font: 600 clamp(2.125rem, 1.5rem + 4vw, 3.375rem) "Fredoka", system-ui, sans-serif; margin: 0.375rem 0; line-height: 1.1; text-wrap: balance; }
+.pill { display: inline-block; font-size: 0.8125rem; font-weight: 700; padding: 0.25rem 0.625rem; border-radius: 999px; background: rgba(248,243,230,.12); }
+.err { background: #5a1d18; color: #ffd9d4; padding: 0.625rem 0.875rem; border-radius: 0.75rem; margin-block-start: 0.75rem; }
+.err:empty { display: none; }
+
+table.list { inline-size: 100%; border-collapse: collapse; font-size: 0.9375rem; }
+table.list td, table.list th { padding: 0.5rem 0.375rem; border-bottom: 1px solid rgba(248,243,230,.1); text-align: start; vertical-align: middle; }
+table.list select { padding: 0.375rem 0.5rem; border-radius: 0.625rem; }
+
+/* Tabs (host dashboard): one scrolling row, selected state from aria-selected */
+.tablist {
+  display: flex; gap: 0.5rem; overflow-x: auto; scrollbar-width: none;
+  padding-block: 0.625rem 0.5rem; position: sticky; top: 0; background: var(--green); z-index: 2;
+  scroll-snap-type: inline proximity;
+}
+.tablist [role="tab"], .tablist > button {
+  flex: none; position: relative; scroll-snap-align: start; border: 0; cursor: pointer;
+  font: 600 0.9375rem "Fredoka", sans-serif; padding: 0.625rem 0.875rem; min-block-size: 2.75rem;
+  border-radius: 999px; background: var(--green-2); color: var(--cream);
+}
+.tablist [aria-selected="true"] {
+  color: var(--gold);
+  &::after { content: ""; position: absolute; inset: auto 0.875rem 0.3rem; border-block-end: 3px solid var(--gold); }
+}
+
+/* Native confirm dialog */
+dialog.confirm {
+  border: 0; border-radius: var(--radius); padding: 1.5rem; max-inline-size: min(26rem, calc(100% - 2rem));
+  background: var(--cream); color: var(--green);
+}
+dialog.confirm h2 { font-size: 1.375rem; }
+dialog.confirm .row { justify-content: flex-end; margin-block-start: 1.25rem; }
+dialog:modal { overscroll-behavior: contain; }
+dialog::backdrop { background: rgba(10, 20, 16, .7); overflow: hidden; overscroll-behavior: contain; }
+
+/* Happening-now card gets a brief highlight when it changes */
+.now-card { transition: box-shadow .3s; }
+.now-card.flash { box-shadow: 0 0 0 4px var(--gold); }
+@media (prefers-reduced-motion: no-preference) {
+  .now-card { transition: box-shadow .3s, scale .3s; }
+  .now-card.flash { scale: 1.02; }
+}
+
+/* TV scoreboard */
+.board { display: grid; gap: 1.125rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
+.board .team { border-radius: 1.5rem; padding: 1.375rem; }
+.board .score { font: 600 clamp(3rem, 2rem + 3vw, 4.5rem) "Fredoka", sans-serif; line-height: 1; }
