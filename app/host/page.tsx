@@ -208,6 +208,7 @@ type P = { s: Admin; call: (a: string, x?: Record<string, unknown>) => Promise<b
 
 function Launch({ s, call, busy }: P) {
   const [msg, setMsg] = useState("");
+  const ask = useConfirm();
   return (
     <>
       <div className="card">
@@ -228,7 +229,12 @@ function Launch({ s, call, busy }: P) {
         <div className="card"><h3>👕 {s.players.filter((p) => p.shirt).length}</h3><p className="muted small">brought ugly T-shirts</p></div>
         <div className="card"><h3>🎁 {s.players.filter((p) => p.gift).length}</h3><p className="muted small">brought gifts</p></div>
       </div>
-      <p className="muted small">Shortcuts: put <a href="/scores" target="_blank">/scores</a> on the TV for the live scoreboard. Show the QR tab so people can join.</p>
+      <p className="muted small">Shortcuts: put the home page or <a href="/scores" target="_blank">/scores</a> on the TV. Both update live.</p>
+      <div className="card">
+        <h3>🧹 Start fresh</h3>
+        <p className="muted small">Clears every guest, team, score, game, swap and vote. Use after testing, before the party.</p>
+        <button type="button" className="btn red sm" disabled={busy} onClick={async () => (await ask("Reset everything?", "All guests, teams, scores, games, swaps and votes are deleted. This can’t be undone.", "Reset everything")) && call("resetAll", { confirm: "RESET" })}>Reset everything</button>
+      </div>
     </>
   );
 }
