@@ -1,7 +1,55 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { getDeviceId } from "@/lib/client";
+import { useEffect, useRef, useState } from "react";
+import QRCode from "qrcode";
+import { getDeviceId, usePoll } from "@/lib/client";
+import { activity } from "@/lib/activities";
+
+/** Big join QR, so the home page can sit on the TV. */
+function JoinQR() {
+  const [src, setSrc] = useState("");
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    const u = `${window.location.origin}/join`;
+    setUrl(u);
+    QRCode.toDataURL(u, { width: 800, margin: 2, color: { dark: "#13261F", light: "#F8F3E6" } }).then(setSrc);
+  }, []);
+  return (
+    <section className="card light qr-card" aria-labelledby="qr-title">
+      <h2 id="qr-title">📱 Scan to join</h2>
+      <p>Point your phone camera here to get your team.</p>
+      <div className="qr-box">
+        {src && <img src={src} alt={`QR code linking to ${url}`} width={800} height={800} />}
+      </div>
+      <p className="qr-url">{url.replace(/^https?:\/\//, "")}</p>
+    </section>
+  );
+}
+
+/** Live "happening now" banner: the host's latest announcement, for the TV and phones. */
+function NowBanner() {
+  const { data } = usePoll<{ now: { activity: string; message: string; at: number }; playerCount: number }>("/api/public", 4000);
+  const [flash, setFlash] = useState(false);
+  const seen = useRef<number | null>(null);
+  const at = data?.now?.at ?? null;
+  useEffect(() => {
+    if (at === null) return;
+    if (seen.current !== null && seen.current !== at) {
+      setFlash(true);
+      setTimeout(() => setFlash(false), 1600);
+    }
+    seen.current = at;
+  }, [at]);
+  if (!data) return null;
+  const act = activity(data.now.activity);
+  return (
+    <section className={`card red now-card${flash ? " flash" : ""}`} role="status" aria-labelledby="home-now-title">
+      <p className="eyebrow" style={{ color: "#F8F3E6" }}>Happening now · {data.playerCount} checked in</p>
+      <h2 id="home-now-title" className="now-title">{act.emoji} {act.label}</h2>
+      <p className="now-msg">{data.now.message || act.blurb}</p>
+    </section>
+  );
+}
 
 export default function Home() {
   const [joined, setJoined] = useState<boolean | null>(null);
@@ -13,10 +61,12 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="wrap">
+    <main className="wrap wide home">
+      <div className="home-info">
       <p className="eyebrow">Saturday 21 November · 5pm onwards</p>
       <h1>Friendsgiving 🎄</h1>
       <p className="lede">Christmas with friends: games, mulled wine and good vibes.</p>
+      <NowBanner />
 
       <div style={{ margin: "22px 0" }}>
         {joined ? (
@@ -54,9 +104,11 @@ export default function Home() {
         <p className="muted small">No fixed times. We’ll kick things off as the night goes. Watch your party page.</p>
       </div>
 
-      <p className="muted small" style={{ textAlign: "center", marginTop: 30 }}>
+      <p className="muted small" style={{ textAlign: "center", marginTop: "1.875rem" }}>
         Address sent separately to guests 📍
       </p>
+      </div>
+      <JoinQR />
     </main>
   );
 }

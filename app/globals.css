@@ -154,3 +154,17 @@ dialog::backdrop { background: rgba(10, 20, 16, .7); overflow: hidden; overscrol
 .board { display: grid; gap: 1.125rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
 .board .team { border-radius: 1.5rem; padding: 1.375rem; }
 .board .score { font: 600 clamp(3rem, 2rem + 3vw, 4.5rem) "Fredoka", sans-serif; line-height: 1; }
+
+/* Home page: info + big join QR side by side on a TV/laptop, stacked on phones */
+.home { display: grid; gap: 1.5rem; align-items: start; }
+.qr-card { text-align: center; }
+.qr-box { aspect-ratio: 1; inline-size: min(100%, 26rem); margin: 0.75rem auto; }
+.qr-box img { inline-size: 100%; block-size: auto; display: block; }
+.qr-url { font: 600 1.25rem "Fredoka", system-ui, sans-serif; overflow-wrap: anywhere; margin: 0; }
+@media (min-width: 60em) {
+  .home { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .qr-card { position: sticky; top: 1.5rem; }
+  .qr-box { inline-size: min(100%, 34rem); }
+}
+.now-title { font-size: clamp(1.75rem, 1.25rem + 2vw, 3rem); }
+.now-msg { font-size: 1.25rem; margin: 0; }
