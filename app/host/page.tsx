@@ -59,6 +59,19 @@ function ConfirmProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// The spelling bee deck (a Claude Slides artifact; opens for whoever it's shared with).
+const SPELLING_BEE_DECK = "https://claude.ai/artifact/66u8GEfbzh42kEN5fSKZAT";
+
+function DeckLink() {
+  return (
+    <div className="card gold">
+      <h3>🐝 Spelling bee slides</h3>
+      <p className="small">Open on the TV, present full screen, and click to reveal each spelling. Words and pronunciations are in the speaker notes.</p>
+      <a className="btn sm" style={{ background: "#13261F", color: "#F8F3E6" }} href={SPELLING_BEE_DECK} target="_blank" rel="noopener">Open the presentation ↗</a>
+    </div>
+  );
+}
+
 const TABS = ["Launch", "Teams", "Scores", "Impostor", "Mafia", "Swaps", "Vote", "QR"] as const;
 type Tab = (typeof TABS)[number];
 
@@ -224,6 +237,7 @@ function Launch({ s, call, busy }: P) {
           ))}
         </div>
       </div>
+      {s.now.activity === "spellingbee" && <DeckLink />}
       <div className="grid3">
         <div className="card"><h3>👥 {s.players.length}</h3><p className="muted small">checked in</p></div>
         <div className="card"><h3>👕 {s.players.filter((p) => p.shirt).length}</h3><p className="muted small">brought ugly T-shirts</p></div>
@@ -279,6 +293,7 @@ function Scores({ s, call, busy }: P) {
   const ask = useConfirm();
   return (
     <>
+      <DeckLink />
       <p className="muted small" style={{ marginTop: 12 }}>Round 1 = 1 pt, Round 2 = 2 pts, Round 3 = 3 pts, steals = 1 pt. Live on <a href="/scores" target="_blank">/scores</a>.</p>
       <div className="grid3">
         {TEAMS.map((t) => (
