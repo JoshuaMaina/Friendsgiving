@@ -69,7 +69,8 @@ export const emptyState = (): State => ({
   mafia: { round: 0, active: false, roles: {}, out: [] },
   vote: { open: false, votes: {} },
   now: { activity: "arrivals", message: "", at: 0 },
-  photosUrl: "",
+  // Shared Google Photos album; the host can change or clear it on the dashboard.
+  photosUrl: "https://photos.app.goo.gl/rtwtxEgkvK9Ss9GP8",
 });
 
 // ---------- helpers ----------
