@@ -11,4 +11,12 @@ export const ACTIVITIES: Record<string, { label: string; emoji: string; blurb: s
   bash: { label: "It’s a bash", emoji: "🪩", blurb: "Games are done. Music up, enjoy the night!" },
 };
 
-export const activity = (id: string) => ACTIVITIES[id] ?? ACTIVITIES.arrivals;
+type NowLike = { activity: string; label?: string; emoji?: string } | null | undefined;
+
+/** What to show for "happening now", including a custom game typed in on the night. */
+export const activity = (now: NowLike | string) => {
+  const n = typeof now === "string" ? { activity: now } : now ?? { activity: "arrivals" };
+  if (n.activity === "custom" && n.label)
+    return { label: n.label, emoji: n.emoji || "🎲", blurb: "New game! Gather round, the host will explain." };
+  return ACTIVITIES[n.activity] ?? ACTIVITIES.arrivals;
+};

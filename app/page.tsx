@@ -7,7 +7,7 @@ import { activity } from "@/lib/activities";
 import { RevealPopup, type Reveal } from "@/components/RevealPopup";
 import { PhotosButton } from "@/components/PhotosButton";
 
-type Pub = { now: { activity: string; message: string; at: number }; playerCount: number; photosUrl?: string; reveals?: Reveal[] };
+type Pub = { now: { activity: string; message: string; at: number; label?: string; emoji?: string }; playerCount: number; photosUrl?: string; reveals?: Reveal[] };
 
 /** Big join QR, so the home page can sit on the TV. */
 function JoinQR() {
@@ -44,7 +44,7 @@ function NowBanner({ data }: { data: Pub | null }) {
     seen.current = at;
   }, [at]);
   if (!data) return null;
-  const act = activity(data.now.activity);
+  const act = activity(data.now);
   return (
     <section className={`card red now-card${flash ? " flash" : ""}`} role="status" aria-labelledby="home-now-title">
       <p className="eyebrow" style={{ color: "#F8F3E6" }}>Happening now · {data.playerCount} checked in</p>

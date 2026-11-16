@@ -14,7 +14,7 @@ type SwapV =
   | null;
 type MeData = {
   joined: boolean;
-  now: { activity: string; message: string; at: number };
+  now: { activity: string; message: string; at: number; label?: string; emoji?: string };
   me: { name: string; team: string; shirt: { size: string; teaser: string } | null; gift: boolean };
   impostor: { round: number; isImpostor: boolean; word: string | null; category: string | null; impostorCount: number } | null;
   mafia: { round: number; role: "mafia" | "doctor" | "detective" | "villager"; out: boolean; partners: string[] } | null;
@@ -136,7 +136,7 @@ export default function Me() {
     );
 
   const team = teamById(data.me.team);
-  const act = activity(data.now?.activity);
+  const act = activity(data.now);
   const mates = pub?.teams.find((t) => t.id === data.me.team)?.members.filter((n) => n !== data.me.name) ?? [];
 
   const checkin = async (shirt: boolean, gift: boolean) => {

@@ -7,7 +7,7 @@ import { RevealPopup, type Reveal } from "@/components/RevealPopup";
 type Pub = {
   teams: { id: string; members: string[]; score: number }[];
   playerCount: number;
-  now: { activity: string; message: string };
+  now: { activity: string; message: string; label?: string; emoji?: string };
   reveals?: Reveal[];
 };
 
@@ -16,7 +16,7 @@ export default function Scores() {
   const { data } = usePoll<Pub>("/api/public", 3000);
   const sorted = [...(data?.teams ?? [])].sort((a, b) => b.score - a.score);
   const top = sorted[0]?.score ?? 0;
-  const act = activity(data?.now?.activity ?? "arrivals");
+  const act = activity(data?.now);
   return (
     <main className="wrap wide">
       <div className="row between">

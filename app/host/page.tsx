@@ -8,7 +8,7 @@ import { post } from "@/lib/client";
 
 type Admin = {
   usingRedis: boolean;
-  now: { activity: string; message: string; at: number };
+  now: { activity: string; message: string; at: number; label?: string; emoji?: string };
   players: { id: string; name: string; team: string; shirt: { size: string; teaser: string } | null; gift: boolean }[];
   scores: Record<string, number>;
   shirtSwap: SwapA;
@@ -167,7 +167,7 @@ function Host() {
 
   if (!s) return <main className="wrap"><p>Loading…</p>{err && <p className="err">{err}</p>}</main>;
 
-  const act = activity(s.now.activity);
+  const act = activity(s.now);
   const count = s.players.length;
 
   return (
@@ -249,6 +249,7 @@ function Launch({ s, call, busy }: P) {
         </div>
       </div>
       {s.now.activity === "spellingbee" && <DeckLink />}
+      <CustomGame call={call} busy={busy} />
       <div className="grid3">
         <div className="card"><h3>👥 {s.players.length}</h3><p className="muted small">checked in</p></div>
         <div className="card"><h3>👕 {s.players.filter((p) => p.shirt).length}</h3><p className="muted small">brought ugly T-shirts</p></div>
@@ -482,6 +483,41 @@ function SwapPanel({ title, sw, kind, call, busy, what }: { title: string; sw: S
         </tbody></table>
       )}
     </div>
+  );
+}
+
+/** A game that isn't built in: name it, put it up as "happening now". */
+function CustomGame({ call, busy }: { call: P["call"]; busy: boolean }) {
+  const [label, setLabel] = useState("");
+  const [emoji, setEmoji] = useState("🎲");
+  const [msg, setMsg] = useState("");
+  return (
+    <form
+      className="card"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (await call("setNow", { activity: "custom", label, emoji, message: msg })) { setLabel(""); setMsg(""); }
+      }}
+    >
+      <h3>➕ Another game</h3>
+      <p className="muted small">For anything not on the list (charades, beer pong, a dance-off…). It goes up as “Happening now” on the TV and phones.</p>
+      <div className="grid3">
+        <div>
+          <label htmlFor="cg-name">Game name <span aria-hidden="true">*</span></label>
+          <input id="cg-name" name="cg-name" type="text" required maxLength={40} value={label} onChange={(e) => setLabel(e.target.value)} />
+        </div>
+        <div>
+          <label htmlFor="cg-emoji">Emoji</label>
+          <input id="cg-emoji" name="cg-emoji" type="text" maxLength={4} value={emoji} onChange={(e) => setEmoji(e.target.value)} />
+        </div>
+        <div>
+          <label htmlFor="cg-msg">Message (optional)</label>
+          <input id="cg-msg" name="cg-msg" type="text" maxLength={140} value={msg} onChange={(e) => setMsg(e.target.value)} aria-describedby="cg-msg-hint" />
+          <p id="cg-msg-hint" className="hint">e.g. “Teams of 2, meet by the kitchen”</p>
+        </div>
+      </div>
+      <button type="submit" className="btn sm" style={{ marginTop: "0.875rem" }} disabled={busy}>▶️ Put it up now</button>
+    </form>
   );
 }
 

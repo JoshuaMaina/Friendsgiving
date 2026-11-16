@@ -44,7 +44,8 @@ export type Mafia = {
 export type Vote = { open: boolean; votes: Record<string, string> };
 
 /** What the host has put up as "happening now"; every phone shows it live. */
-export type Now = { activity: string; message: string; at: number };
+/** activity "custom" uses the host-typed label + emoji (a game made up on the night). */
+export type Now = { activity: string; message: string; at: number; label?: string; emoji?: string };
 
 export type State = {
   players: Record<string, Player>;

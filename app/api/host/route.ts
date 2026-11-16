@@ -172,6 +172,12 @@ export async function POST(req: Request) {
             message: String(body.message || "").slice(0, 140),
             at: Date.now(),
           };
+          if (s.now.activity === "custom") {
+            const label = String(body.label || "").replace(/\s+/g, " ").trim().slice(0, 40);
+            if (!label) return "Give the game a name";
+            s.now.label = label;
+            s.now.emoji = [...String(body.emoji || "🎲").trim()].slice(0, 2).join("") || "🎲";
+          }
           return null;
         case "setPhotos": {
           const u = String(body.url || "").trim();
