@@ -24,7 +24,15 @@ export const usingRedis = () => !!redis;
 export async function readState(): Promise<State> {
   if (!redis) return g.__fgMem ?? emptyState();
   const s = await redis.get<State>(KEY);
-  return s ? { ...emptyState(), ...s } : emptyState();
+  if (!s) return emptyState();
+  // Fill in fields added after the state was first saved.
+  const base = emptyState();
+  return {
+    ...base,
+    ...s,
+    shirtSwap: { ...base.shirtSwap, ...s.shirtSwap },
+    giftSwap: { ...base.giftSwap, ...s.giftSwap },
+  };
 }
 
 async function writeState(s: State) {
