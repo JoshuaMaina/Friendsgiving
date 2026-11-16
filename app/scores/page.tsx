@@ -2,11 +2,13 @@
 import { usePoll } from "@/lib/client";
 import { teamById } from "@/lib/teams";
 import { activity } from "@/lib/activities";
+import { RevealPopup, type Reveal } from "@/components/RevealPopup";
 
 type Pub = {
   teams: { id: string; members: string[]; score: number }[];
   playerCount: number;
   now: { activity: string; message: string };
+  reveals?: Reveal[];
 };
 
 // Built for the TV: big, live scores.
@@ -41,7 +43,8 @@ export default function Scores() {
           );
         })}
       </div>
-      <p className="muted" style={{ marginTop: 20 }}>{data?.playerCount ?? 0} people checked in</p>
+      <p className="muted" style={{ marginTop: "1.25rem" }}>{data?.playerCount ?? 0} people checked in</p>
+      <RevealPopup reveals={data?.reveals} />
     </main>
   );
 }

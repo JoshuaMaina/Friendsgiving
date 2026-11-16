@@ -3,8 +3,11 @@ import {
   emptyState,
   emptySwap,
   reshuffleTeams,
+  revealAll,
+  revealNext,
   runSwap,
   startImpostor,
+  upNext,
   startMafia,
   voteResults,
   type State,
@@ -26,12 +29,20 @@ function adminView(s: State) {
   const players = Object.values(s.players)
     .sort((a, b) => a.joinedAt - b.joinedAt)
     .map((p) => ({ id: p.id, name: p.name, team: p.team, shirt: p.shirt, gift: p.gift }));
-  const swap = (sw: Swap, eligible: string[]) => ({
-    started: sw.started,
-    pairs: Object.entries(sw.matches).map(([r, src]) => ({ receiver: name(r), from: name(src) })),
-    waiting: sw.started ? eligible.filter((id) => !(id in sw.matches)).map(name) : [],
-    eligible: eligible.length,
-  });
+  const swap = (sw: Swap, eligible: string[]) => {
+    const revealed = sw.revealed ?? [];
+    const next = upNext(sw);
+    return {
+      started: sw.started,
+      pairs: Object.entries(sw.matches).map(([r, src]) => ({ receiver: name(r), from: name(src), revealed: revealed.includes(r) })),
+      waiting: sw.started ? eligible.filter((id) => !(id in sw.matches)).map(name) : [],
+      eligible: eligible.length,
+      revealedCount: revealed.length,
+      total: Object.keys(sw.matches).length,
+      upNext: next ? name(next) : null,
+      last: revealed.length ? { receiver: name(revealed[revealed.length - 1]), from: name(sw.matches[revealed[revealed.length - 1]]) } : null,
+    };
+  };
   return {
     usingRedis: usingRedis(),
     envSeen: Object.fromEntries(
@@ -54,6 +65,7 @@ function adminView(s: State) {
         .sort((a, b) => a.role.localeCompare(b.role) || a.name.localeCompare(b.name)),
     },
     now: s.now,
+    photosUrl: s.photosUrl ?? "",
     vote: { open: s.vote.open, count: Object.keys(s.vote.votes).length, results: voteResults(s) },
   };
 }
@@ -121,8 +133,21 @@ export async function POST(req: Request) {
             .map((p) => p.id);
           runSwap(s[key], eligible);
           if (!s[key].started) return "Need at least 2 people checked in";
-          if (s.now.activity !== (key === "shirtSwap" ? "shirtswap" : "secretsanta"))
-            setNow(s, key === "shirtSwap" ? "shirtswap" : "secretsanta");
+          // Matches are made in secret; nothing is revealed until the host reveals each one,
+          // so whatever is happening now (e.g. the spelling bee) carries on.
+          return null;
+        }
+        case "shirtReveal":
+        case "giftReveal": {
+          const sw = a === "shirtReveal" ? s.shirtSwap : s.giftSwap;
+          if (!sw.started) return "Start the swap first";
+          return revealNext(sw) ? null : "Everyone’s been revealed";
+        }
+        case "shirtRevealAll":
+        case "giftRevealAll": {
+          const sw = a === "shirtRevealAll" ? s.shirtSwap : s.giftSwap;
+          if (!sw.started) return "Start the swap first";
+          revealAll(sw);
           return null;
         }
         case "shirtSwapReset":
@@ -148,6 +173,19 @@ export async function POST(req: Request) {
             at: Date.now(),
           };
           return null;
+        case "setPhotos": {
+          const u = String(body.url || "").trim();
+          if (u) {
+            try {
+              const parsed = new URL(u);
+              if (parsed.protocol !== "https:") return "Use an https:// link";
+            } catch {
+              return "That doesn’t look like a link";
+            }
+          }
+          s.photosUrl = u.slice(0, 500);
+          return null;
+        }
         case "resetAll":
           if (body.confirm !== "RESET") return "Type RESET to confirm";
           Object.assign(s, emptyState());

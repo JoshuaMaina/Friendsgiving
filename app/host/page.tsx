@@ -16,8 +16,18 @@ type Admin = {
   impostor: { round: number; active: boolean; category: string; word: string; showCategory: boolean; impostors: string[]; players: number };
   mafia: { round: number; active: boolean; roles: { id: string; name: string; role: string; out: boolean }[] };
   vote: { open: boolean; count: number; results: { name: string; votes: number }[] };
+  photosUrl: string;
 };
-type SwapA = { started: boolean; pairs: { receiver: string; from: string }[]; waiting: string[]; eligible: number };
+type SwapA = {
+  started: boolean;
+  pairs: { receiver: string; from: string; revealed: boolean }[];
+  waiting: string[];
+  eligible: number;
+  revealedCount: number;
+  total: number;
+  upNext: string | null;
+  last: { receiver: string; from: string } | null;
+};
 
 // Native <dialog> confirm, used instead of window.confirm()
 type Ask = (title: string, body?: string, ok?: string) => Promise<boolean>;
@@ -171,6 +181,7 @@ function Host() {
       </div>
       {!s.usingRedis && <p className="err">No database connected: data lives in memory and will reset. Add Upstash Redis in Vercel → Storage.</p>}
 
+      <RevealBar s={s} call={call} busy={busy} />
       <div className="tablist" ref={tablistRef} aria-label="Host controls" {...({ focusgroup: "tablist nomemory" } as object)}>
         {TABS.map((t) => (
           <button
@@ -190,8 +201,8 @@ function Host() {
       <Panel id="Impostor" tab={tab} setTab={setTab}><ImpostorTab s={s} call={call} busy={busy} /></Panel>
       <Panel id="Mafia" tab={tab} setTab={setTab}><MafiaTab s={s} call={call} busy={busy} /></Panel>
       <Panel id="Swaps" tab={tab} setTab={setTab}>
-        <SwapPanel title="👕 Ugly T-shirt swap" sw={s.shirtSwap} run={() => call("shirtSwap")} reset={async () => (await ask("Reset the T-shirt swap?", "Everyone loses their match.", "Reset")) && call("shirtSwapReset")} busy={busy} what="T-shirts" />
-        <SwapPanel title="🎁 Secret Santa" sw={s.giftSwap} run={() => call("giftSwap")} reset={async () => (await ask("Reset Secret Santa?", "Everyone loses their match.", "Reset")) && call("giftSwapReset")} busy={busy} what="gifts" />
+        <SwapPanel title="👕 Ugly T-shirt swap" sw={s.shirtSwap} kind="shirt" call={call} busy={busy} what="T-shirts" />
+        <SwapPanel title="🎁 Secret Santa" sw={s.giftSwap} kind="gift" call={call} busy={busy} what="gifts" />
       </Panel>
       <Panel id="Vote" tab={tab} setTab={setTab}><VoteTab s={s} call={call} busy={busy} /></Panel>
       <Panel id="QR" tab={tab} setTab={setTab}><QR /></Panel>
@@ -244,6 +255,7 @@ function Launch({ s, call, busy }: P) {
         <div className="card"><h3>🎁 {s.players.filter((p) => p.gift).length}</h3><p className="muted small">brought gifts</p></div>
       </div>
       <p className="muted small">Shortcuts: put the home page or <a href="/scores" target="_blank">/scores</a> on the TV. Both update live.</p>
+      <PhotosForm s={s} call={call} busy={busy} />
       <div className="card">
         <h3>🧹 Start fresh</h3>
         <p className="muted small">Clears every guest, team, score, game, swap and vote. Use after testing, before the party.</p>
@@ -423,25 +435,92 @@ function MafiaTab({ s, call, busy }: P) {
   );
 }
 
-function SwapPanel({ title, sw, run, reset, busy, what }: { title: string; sw: SwapA; run: () => void; reset: () => void; busy: boolean; what: string }) {
+function SwapPanel({ title, sw, kind, call, busy, what }: { title: string; sw: SwapA; kind: "shirt" | "gift"; call: P["call"]; busy: boolean; what: string }) {
+  const ask = useConfirm();
   const [show, setShow] = useState(false);
+  const key = kind === "shirt" ? "shirtSwap" : "giftSwap";
+  const left = sw.total - sw.revealedCount;
   return (
     <div className="card">
       <h3>{title}</h3>
-      <p className="muted small">{sw.eligible} checked in with {what}. Everyone gets someone else’s, never their own.</p>
-      {sw.waiting.length > 0 && <p className="pill" style={{ background: "#B8322A" }}>{sw.waiting.length} waiting: {sw.waiting.join(", ")}</p>}
-      <div className="row" style={{ marginTop: 12 }}>
-        <button type="button" className="btn" disabled={busy || sw.eligible < 2} onClick={run}>
-          {!sw.started ? "▶️ Start swap" : sw.waiting.length ? `➕ Match ${sw.waiting.length} latecomer(s)` : "✅ Everyone matched"}
-        </button>
-        {sw.started && <button type="button" className="btn ghost sm" onClick={() => setShow((x) => !x)}>{show ? "Hide" : "Show"} matches</button>}
-        {sw.started && <button type="button" className="btn ghost sm" onClick={reset}>Reset</button>}
+      <p className="muted small">
+        {sw.eligible} checked in with {what}. Starting makes everyone’s matches in secret (never their own). Then you reveal them one at a time, whenever you like, even mid-spelling-bee. Each reveal pops up on the TV and every phone.
+      </p>
+      {sw.waiting.length > 0 && <p className="pill" style={{ background: "#B8322A" }}>{sw.waiting.length} not in the swap yet: {sw.waiting.join(", ")}</p>}
+      <div className="row" style={{ marginTop: "0.75rem" }}>
+        {!sw.started ? (
+          <button type="button" className="btn" disabled={busy || sw.eligible < 2} onClick={() => call(key)}>▶️ Start swap</button>
+        ) : (
+          <>
+            <button type="button" className="btn" disabled={busy || left === 0} onClick={() => call(kind === "shirt" ? "shirtReveal" : "giftReveal")}>
+              {left === 0 ? "✅ All revealed" : `🎲 Reveal next (${sw.revealedCount + 1} of ${sw.total})`}
+            </button>
+            {sw.waiting.length > 0 && <button type="button" className="btn ghost sm" disabled={busy} onClick={() => call(key)}>➕ Add {sw.waiting.length} latecomer(s)</button>}
+            {left > 1 && (
+              <button type="button" className="btn ghost sm" disabled={busy} onClick={async () => (await ask(`Reveal all ${left} remaining?`, "Everyone sees their match at once on their phone.", "Reveal all")) && call(kind === "shirt" ? "shirtRevealAll" : "giftRevealAll")}>
+                ⏩ Reveal all remaining
+              </button>
+            )}
+          </>
+        )}
       </div>
+      {sw.started && (
+        <p className="small" style={{ marginTop: "0.75rem" }}>
+          {sw.last && <>Last: <strong>{sw.last.receiver}</strong> got {sw.last.from}’s. </>}
+          {left > 0 && (sw.upNext ? <>Up next: <strong>{sw.upNext}</strong>.</> : <>Next one is picked at random.</>)}
+        </p>
+      )}
+      {sw.started && (
+        <div className="row">
+          <button type="button" className="btn ghost sm" onClick={() => setShow((x) => !x)}>{show ? "Hide" : "Show"} all matches (spoilers!)</button>
+          <button type="button" className="btn ghost sm" onClick={async () => (await ask(`Reset the ${what} swap?`, "Everyone loses their match and reveals start over.", "Reset")) && call(kind === "shirt" ? "shirtSwapReset" : "giftSwapReset")}>Reset</button>
+        </div>
+      )}
       {show && (
-        <table className="list" style={{ marginTop: 12 }}><tbody>
-          {sw.pairs.map((p) => <tr key={p.receiver}><td>{p.receiver}</td><td>gets {p.from}’s</td></tr>)}
+        <table className="list" style={{ marginTop: "0.75rem" }}><tbody>
+          {sw.pairs.map((p) => <tr key={p.receiver}><td>{p.revealed ? "✅" : "⏳"} {p.receiver}</td><td>gets {p.from}’s</td></tr>)}
         </tbody></table>
       )}
+    </div>
+  );
+}
+
+function PhotosForm({ s, call, busy }: P) {
+  const [url, setUrl] = useState(s.photosUrl);
+  const [saved, setSaved] = useState("");
+  return (
+    <form
+      className="card"
+      onSubmit={async (e) => { e.preventDefault(); if (await call("setPhotos", { url })) setSaved(url ? "Saved: the button is live ✓" : "Removed ✓"); }}
+    >
+      <h3>📸 Shared photo album</h3>
+      <label htmlFor="photos-url">Album link</label>
+      <input id="photos-url" name="photos-url" type="url" inputMode="url" autoComplete="url" value={url} onChange={(e) => { setUrl(e.target.value); setSaved(""); }} aria-describedby="photos-hint" />
+      <p id="photos-hint" className="hint">e.g. a Google Photos shared album with collaboration on. Shows an “Add your photos” button on the home page and everyone’s party page. Leave empty to hide it.</p>
+      <div className="row" style={{ marginTop: "0.75rem" }}>
+        <button type="submit" className="btn sm" disabled={busy || url === s.photosUrl}>Save link</button>
+        <span className="small" role="status">{saved}</span>
+      </div>
+    </form>
+  );
+}
+
+/** Always-visible reveal buttons, so a reveal can happen from any tab (e.g. during the spelling bee). */
+function RevealBar({ s, call, busy }: P) {
+  const items = (
+    [
+      ["shirt", "👕 Next shirt reveal", s.shirtSwap],
+      ["gift", "🎁 Next Secret Santa", s.giftSwap],
+    ] as const
+  ).filter(([, , sw]) => sw.started && sw.revealedCount < sw.total);
+  if (!items.length) return null;
+  return (
+    <div className="reveal-bar">
+      {items.map(([kind, label, sw]) => (
+        <button key={kind} type="button" className="btn sm" disabled={busy} onClick={() => call(kind === "shirt" ? "shirtReveal" : "giftReveal")}>
+          {label} ({sw.revealedCount + 1}/{sw.total}){sw.upNext ? ` · ${sw.upNext}` : ""}
+        </button>
+      ))}
     </div>
   );
 }

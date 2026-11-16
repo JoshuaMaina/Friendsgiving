@@ -4,8 +4,14 @@ import { useEffect, useId, useRef, useState } from "react";
 import { getDeviceId, post, usePoll } from "@/lib/client";
 import { teamById } from "@/lib/teams";
 import { activity } from "@/lib/activities";
+import { RevealPopup, type Reveal } from "@/components/RevealPopup";
+import { PhotosButton } from "@/components/PhotosButton";
 
-type SwapV = { waiting: true } | { waiting: false; from: string; fromTeam: string; teaser: string; size: string } | null;
+type SwapV =
+  | { status: "queue"; done: number; total: number }
+  | { status: "waiting"; done: number; total: number; givenAway: string | null }
+  | { status: "revealed"; done: number; total: number; givenAway: string | null; from: string; fromTeam: string; teaser: string; size: string }
+  | null;
 type MeData = {
   joined: boolean;
   now: { activity: string; message: string; at: number };
@@ -14,9 +20,9 @@ type MeData = {
   mafia: { round: number; role: "mafia" | "doctor" | "detective" | "villager"; out: boolean; partners: string[] } | null;
   shirtSwap: SwapV;
   giftSwap: SwapV;
-  vote: { myVote: string | null; candidates: { key: string; name: string; teaser: string }[] } | null;
+  vote: { myVote: string | null; candidates: { key: string; name: string; teaser: string; wornBy: string | null }[] } | null;
 };
-type Pub = { teams: { id: string; members: string[]; score: number }[] };
+type Pub = { teams: { id: string; members: string[]; score: number }[]; photosUrl?: string; reveals?: Reveal[] };
 
 const ROLE: Record<string, { title: string; emoji: string; text: string }> = {
   mafia: { title: "Mafia", emoji: "🔪", text: "Each night, agree with the other Mafia who to take out. Act innocent by day." },
@@ -44,9 +50,13 @@ function SwapCard({ title, emoji, v, noun }: { title: string; emoji: string; v: 
   return (
     <div className="card gold">
       <p className="eyebrow" style={{ color: "#13261F" }}>{emoji} {title}</p>
-      {v.waiting ? (
-        <p>You’re in the queue. The host will match you in a moment.</p>
-      ) : (
+      <p className="small" style={{ margin: "0 0 0.5rem" }}>{v.done} of {v.total} revealed so far</p>
+      {v.status === "queue" && <p>You’re checked in. The host will add you to the swap shortly.</p>}
+      {v.status !== "queue" && v.givenAway && (
+        <p><strong>Your {noun} goes to {v.givenAway}.</strong> {noun === "T-shirt" ? "Hand it over!" : "Hope they like it!"}</p>
+      )}
+      {v.status === "waiting" && <p>Your reveal hasn’t happened yet. Keep this page open: it’ll pop up when it’s your turn 👀</p>}
+      {v.status === "revealed" && (
         <>
           <p style={{ margin: 0 }}>You’re getting</p>
           <div className="big-word">{v.from}’s {noun}</div>
@@ -56,7 +66,6 @@ function SwapCard({ title, emoji, v, noun }: { title: string; emoji: string; v: 
               {v.teaser && <>“{v.teaser}”</>} {v.size && <span className="pill" style={{ background: "rgba(19,38,31,.12)" }}>Size {v.size}</span>}
             </p>
           )}
-          <p className="small"><strong>Go find them and swap!</strong></p>
         </>
       )}
     </div>
@@ -96,14 +105,14 @@ export default function Me() {
   const [id, setId] = useState<string | null>(null);
   useEffect(() => setId(getDeviceId()), []);
   const { data, refresh } = usePoll<MeData>(id ? `/api/me?id=${id}` : null, 3000);
-  const { data: pub } = usePoll<Pub>("/api/public", 8000);
+  const { data: pub } = usePoll<Pub>("/api/public", 3000);
   const [flash, setFlash] = useState(false);
   const [err, setErr] = useState("");
   const seen = useRef<string>("");
 
   // Buzz + flash when something new starts.
   const sig = data?.joined
-    ? [data.now?.at, data.impostor?.round, data.mafia?.round, !!data.shirtSwap, !!data.giftSwap, !!data.vote].join("|")
+    ? [data.now?.at, data.impostor?.round, data.mafia?.round, !!data.vote].join("|")
     : "";
   useEffect(() => {
     if (!sig) return;
@@ -148,6 +157,9 @@ export default function Me() {
         <h1 className="eyebrow" style={{ margin: 0 }}>Hi {data.me.name} 👋🏾 · your party page</h1>
         <span className="pill">Live: updates automatically</span>
       </div>
+
+      <RevealPopup reveals={pub?.reveals} me={data.me.name} />
+      {pub?.photosUrl && <PhotosButton url={pub.photosUrl} />}
 
       {/* Happening now */}
       <section className={`card red now-card${flash ? " flash" : ""}`} role="status" aria-labelledby="now-title">
@@ -204,7 +216,10 @@ export default function Me() {
           <div style={{ display: "grid", gap: 8 }}>
             {data.vote.candidates.map((c) => (
               <button type="button" key={c.key} className="btn ghost" aria-pressed={data.vote!.myVote === c.name} style={{ justifyContent: "flex-start", textAlign: "start" }} onClick={() => vote(c.key)}>
-                {c.name}{c.teaser && <span style={{ fontWeight: 400, fontSize: 14 }}> · “{c.teaser}”</span>}
+                <span>
+                  {c.name}’s shirt{c.wornBy && <> · worn by {c.wornBy}</>}
+                  {c.teaser && <span style={{ fontWeight: 400, fontSize: "0.875rem", display: "block" }}>“{c.teaser}”</span>}
+                </span>
               </button>
             ))}
           </div>

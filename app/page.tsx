@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { getDeviceId, usePoll } from "@/lib/client";
 import { activity } from "@/lib/activities";
+import { RevealPopup, type Reveal } from "@/components/RevealPopup";
+import { PhotosButton } from "@/components/PhotosButton";
+
+type Pub = { now: { activity: string; message: string; at: number }; playerCount: number; photosUrl?: string; reveals?: Reveal[] };
 
 /** Big join QR, so the home page can sit on the TV. */
 function JoinQR() {
@@ -27,8 +31,7 @@ function JoinQR() {
 }
 
 /** Live "happening now" banner: the host's latest announcement, for the TV and phones. */
-function NowBanner() {
-  const { data } = usePoll<{ now: { activity: string; message: string; at: number }; playerCount: number }>("/api/public", 4000);
+function NowBanner({ data }: { data: Pub | null }) {
   const [flash, setFlash] = useState(false);
   const seen = useRef<number | null>(null);
   const at = data?.now?.at ?? null;
@@ -53,6 +56,7 @@ function NowBanner() {
 
 export default function Home() {
   const [joined, setJoined] = useState<boolean | null>(null);
+  const { data } = usePoll<Pub>("/api/public", 3000);
   useEffect(() => {
     fetch(`/api/me?id=${getDeviceId()}`, { cache: "no-store" })
       .then((r) => r.json())
@@ -66,15 +70,16 @@ export default function Home() {
       <p className="eyebrow">Saturday 21 November · 5pm onwards</p>
       <h1>Friendsgiving 🎄</h1>
       <p className="lede">Christmas with friends: games, mulled wine and good vibes.</p>
-      <NowBanner />
+      <NowBanner data={data} />
+      {data?.photosUrl && <PhotosButton url={data.photosUrl} />}
 
-      <div style={{ margin: "22px 0" }}>
+      <div style={{ margin: "1.375rem 0" }}>
         {joined ? (
           <Link className="btn block" href="/me">Go to my party page →</Link>
         ) : (
           <Link className="btn block" href="/join">Join the party &amp; get your team →</Link>
         )}
-        <p className="muted small" style={{ marginTop: 10, textAlign: "center" }}>
+        <p className="muted small" style={{ marginTop: "0.625rem", textAlign: "center" }}>
           Keep your party page open on the night. Games, swaps and announcements pop up there live.
         </p>
       </div>
@@ -91,7 +96,7 @@ export default function Home() {
         </div>
         <div className="card red">
           <h2>👕 Ugly T-shirt swap</h2>
-          <p>Bring the ugliest T-shirt you can find. We swap them at random, and whatever you get, you wear for the rest of the night. Prize for the ugliest one.</p>
+          <p>Bring the ugliest T-shirt you can find. Throughout the night we’ll reveal who gets whose, live on screen, and whatever you get, you wear. Vote for the ugliest at the end: there’s a prize.</p>
         </div>
       </div>
 
@@ -109,6 +114,7 @@ export default function Home() {
       </p>
       </div>
       <JoinQR />
+      <RevealPopup reveals={data?.reveals} />
     </main>
   );
 }

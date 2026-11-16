@@ -11,7 +11,17 @@ export type Player = {
 };
 
 /** receiverId -> sourceId ("you're getting source's shirt/gift") */
-export type Swap = { started: boolean; round: number; matches: Record<string, string> };
+/**
+ * matches: receiverId -> sourceId ("receiver gets source's shirt/gift"), made in secret at launch.
+ * revealed: receivers revealed so far, in order. The host reveals them one at a time.
+ */
+export type Swap = {
+  started: boolean;
+  round: number;
+  matches: Record<string, string>;
+  revealed: string[];
+  lastAt: number; // when the latest reveal happened (0 = none yet)
+};
 
 export type Impostor = {
   round: number;
@@ -45,9 +55,10 @@ export type State = {
   mafia: Mafia;
   vote: Vote;
   now: Now;
+  photosUrl: string; // shared album link set by the host ('' = none)
 };
 
-export const emptySwap = (): Swap => ({ started: false, round: 0, matches: {} });
+export const emptySwap = (): Swap => ({ started: false, round: 0, matches: {}, revealed: [], lastAt: 0 });
 
 export const emptyState = (): State => ({
   players: {},
@@ -58,6 +69,7 @@ export const emptyState = (): State => ({
   mafia: { round: 0, active: false, roles: {}, out: [] },
   vote: { open: false, votes: {} },
   now: { activity: "arrivals", message: "", at: 0 },
+  photosUrl: "",
 });
 
 // ---------- helpers ----------
@@ -97,8 +109,11 @@ export function reshuffleTeams(s: State) {
  * which keeps everyone already matched valid. Returns ids still waiting (needs 2+ people to start).
  */
 export function runSwap(swap: Swap, eligible: string[]): string[] {
+  swap.revealed ??= [];
+  swap.lastAt ??= 0;
   const elig = new Set(eligible);
-  // Drop matches involving people who left or un-ticked: repair the cycle around them.
+  const unreveal = (id: string) => (swap.revealed = swap.revealed.filter((x) => x !== id));
+  // Drop people who left or un-ticked, repairing the cycle around them.
   for (const r of Object.keys(swap.matches)) {
     if (!(r in swap.matches)) continue;
     const src = swap.matches[r];
@@ -106,8 +121,10 @@ export function runSwap(swap: Swap, eligible: string[]): string[] {
       // whoever was getting r's item now gets what r was getting
       const giver = Object.keys(swap.matches).find((k) => swap.matches[k] === r);
       delete swap.matches[r];
+      unreveal(r);
       if (giver && giver !== src) swap.matches[giver] = src;
       else if (giver) delete swap.matches[giver];
+      if (giver) unreveal(giver); // their item changed, so reveal them again
     }
   }
   const pending = shuffle(eligible.filter((id) => !(id in swap.matches)));
@@ -118,15 +135,48 @@ export function runSwap(swap: Swap, eligible: string[]): string[] {
     });
   } else {
     for (const x of pending) {
-      const r = pick(Object.keys(swap.matches));
+      // Splice into someone not yet revealed, so nobody's reveal changes after the fact.
+      const unrevealed = Object.keys(swap.matches).filter((k) => !swap.revealed.includes(k));
+      const r = pick(unrevealed.length ? unrevealed : Object.keys(swap.matches));
       const src = swap.matches[r];
       swap.matches[r] = x;
       swap.matches[x] = src;
+      unreveal(r);
     }
   }
   swap.started = true;
   swap.round++;
   return [];
+}
+
+/**
+ * Reveal the next swap. Chain order: the person whose item was just revealed is up next
+ * ("Ama gets Sam's shirt" -> "Sam gets ..."). When a loop closes, start from someone random.
+ */
+export function revealNext(swap: Swap): string | null {
+  const left = Object.keys(swap.matches).filter((r) => !swap.revealed.includes(r));
+  if (!left.length) return null;
+  const last = swap.revealed[swap.revealed.length - 1];
+  const chained = last ? swap.matches[last] : undefined;
+  const next = chained && left.includes(chained) ? chained : pick(left);
+  swap.revealed.push(next);
+  swap.lastAt = Date.now();
+  return next;
+}
+
+export function revealAll(swap: Swap) {
+  let n = 0;
+  while (revealNext(swap)) n++;
+  return n;
+}
+
+/** The order the remaining reveals will go in (for the host's "up next"). */
+export function upNext(swap: Swap): string | null {
+  const left = Object.keys(swap.matches).filter((r) => !swap.revealed.includes(r));
+  if (!left.length) return null;
+  const last = swap.revealed[swap.revealed.length - 1];
+  const chained = last ? swap.matches[last] : undefined;
+  return chained && left.includes(chained) ? chained : null; // null = random pick
 }
 
 // ---------- impostor ----------
@@ -198,11 +248,19 @@ export function playerView(s: State, id: string) {
   }
   const swapView = (sw: Swap, mine: boolean) => {
     if (!sw.started || !mine) return null;
+    const revealed = sw.revealed ?? [];
+    const total = Object.keys(sw.matches).length;
     const src = sw.matches[id];
-    if (!src) return { waiting: true as const };
+    if (!src) return { status: "queue" as const, done: revealed.length, total };
+    const giverTo = Object.keys(sw.matches).find((k) => sw.matches[k] === id);
+    const givenAway = giverTo && revealed.includes(giverTo) ? nameOf(s, giverTo) : null;
+    if (!revealed.includes(id)) return { status: "waiting" as const, done: revealed.length, total, givenAway };
     const owner = s.players[src];
     return {
-      waiting: false as const,
+      status: "revealed" as const,
+      done: revealed.length,
+      total,
+      givenAway,
       from: nameOf(s, src),
       fromTeam: owner?.team ?? "",
       teaser: owner?.shirt?.teaser ?? "",
@@ -221,10 +279,17 @@ export function playerView(s: State, id: string) {
           myVote: s.vote.votes[id] ? nameOf(s, s.vote.votes[id]) : null,
           candidates: Object.values(s.players)
             .filter((x) => x.shirt && x.id !== id)
-            .map((x) => ({ key: voteKey(x), name: x.name, teaser: x.shirt?.teaser ?? "" })),
+            .map((x) => ({ key: voteKey(x), name: x.name, teaser: x.shirt?.teaser ?? "", wornBy: wornBy(s, x.id) })),
         }
       : null,
   };
+}
+
+/** Who is now wearing this person's shirt (only once that swap has been revealed). */
+function wornBy(s: State, ownerId: string): string | null {
+  const sw = s.shirtSwap;
+  const r = Object.keys(sw.matches).find((k) => sw.matches[k] === ownerId);
+  return r && (sw.revealed ?? []).includes(r) ? nameOf(s, r) : null;
 }
 
 /** Public, id-free key for vote candidates. */
@@ -241,7 +306,34 @@ export function publicView(s: State) {
   }));
   const shirts = Object.values(s.players).filter((p) => p.shirt).length;
   const gifts = Object.values(s.players).filter((p) => p.gift).length;
-  return { teams, playerCount: Object.keys(s.players).length, shirts, gifts, now: s.now };
+  return {
+    teams,
+    playerCount: Object.keys(s.players).length,
+    shirts,
+    gifts,
+    now: s.now,
+    photosUrl: s.photosUrl ?? "",
+    reveals: [latestReveal(s, "shirt"), latestReveal(s, "gift")].filter(Boolean),
+  };
+}
+
+/** The most recent reveal of a swap, for the big pop-up on the TV and phones. */
+export function latestReveal(s: State, kind: "shirt" | "gift") {
+  const sw = kind === "shirt" ? s.shirtSwap : s.giftSwap;
+  const revealed = sw.revealed ?? [];
+  if (!sw.started || !revealed.length) return null;
+  const r = revealed[revealed.length - 1];
+  const src = sw.matches[r];
+  const owner = s.players[src];
+  return {
+    kind,
+    at: sw.lastAt,
+    receiver: nameOf(s, r),
+    from: nameOf(s, src),
+    teaser: kind === "shirt" ? owner?.shirt?.teaser ?? "" : "",
+    n: revealed.length,
+    total: Object.keys(sw.matches).length,
+  };
 }
 
 export function voteResults(s: State) {
