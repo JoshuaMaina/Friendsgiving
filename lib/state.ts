@@ -8,6 +8,7 @@ export type Player = {
   joinedAt: number;
   shirt: { size: string; teaser: string } | null; // null = no ugly T-shirt
   gift: boolean; // brought a Secret Santa gift
+  leaving?: boolean; // tapped "Heading off soon": host should reveal their swaps now
 };
 
 /** receiverId -> sourceId ("you're getting source's shirt/gift") */
@@ -172,6 +173,26 @@ export function revealAll(swap: Swap) {
   return n;
 }
 
+/** Reveal one particular person now, out of order (e.g. they're about to leave). */
+export function revealPerson(swap: Swap, id: string): boolean {
+  if (!(id in swap.matches) || swap.revealed.includes(id)) return false;
+  swap.revealed.push(id);
+  swap.lastAt = Date.now();
+  return true;
+}
+
+/**
+ * Keep running swaps in step with who's here: once a swap has started, anyone who checks in
+ * with a shirt/gift is added straight away, and anyone removed is taken out. If everyone has
+ * already been revealed, a newcomer is spliced in by "stealing": someone revealed earlier
+ * gets the newcomer's item and the newcomer gets what that person had (both are re-revealed).
+ */
+export function syncSwaps(s: State) {
+  const players = Object.values(s.players);
+  if (s.shirtSwap.started) runSwap(s.shirtSwap, players.filter((p) => !!p.shirt).map((p) => p.id));
+  if (s.giftSwap.started) runSwap(s.giftSwap, players.filter((p) => p.gift).map((p) => p.id));
+}
+
 /** The order the remaining reveals will go in (for the host's "up next"). */
 export function upNext(swap: Swap): string | null {
   const left = Object.keys(swap.matches).filter((r) => !swap.revealed.includes(r));
@@ -271,7 +292,7 @@ export function playerView(s: State, id: string) {
   };
   return {
     now: s.now,
-    me: { name: p.name, team: p.team, shirt: p.shirt, gift: p.gift },
+    me: { name: p.name, team: p.team, shirt: p.shirt, gift: p.gift, leaving: !!p.leaving },
     impostor,
     mafia,
     shirtSwap: swapView(s.shirtSwap, !!p.shirt),

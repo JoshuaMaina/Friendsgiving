@@ -5,8 +5,10 @@ import {
   reshuffleTeams,
   revealAll,
   revealNext,
+  revealPerson,
   runSwap,
   startImpostor,
+  syncSwaps,
   upNext,
   startMafia,
   voteResults,
@@ -28,7 +30,12 @@ function adminView(s: State) {
   const name = (id: string) => s.players[id]?.name ?? "(left)";
   const players = Object.values(s.players)
     .sort((a, b) => a.joinedAt - b.joinedAt)
-    .map((p) => ({ id: p.id, name: p.name, team: p.team, shirt: p.shirt, gift: p.gift }));
+    .map((p) => ({
+      id: p.id, name: p.name, team: p.team, shirt: p.shirt, gift: p.gift, leaving: !!p.leaving,
+      // what this guest is still waiting to see revealed
+      pendingShirt: s.shirtSwap.started && p.id in s.shirtSwap.matches && !(s.shirtSwap.revealed ?? []).includes(p.id),
+      pendingGift: s.giftSwap.started && p.id in s.giftSwap.matches && !(s.giftSwap.revealed ?? []).includes(p.id),
+    }));
   const swap = (sw: Swap, eligible: string[]) => {
     const revealed = sw.revealed ?? [];
     const next = upNext(sw);
@@ -92,7 +99,24 @@ export async function POST(req: Request) {
         }
         case "removePlayer":
           delete s.players[body.playerId];
+          syncSwaps(s);
           return null;
+        case "revealPerson": {
+          // Reveal one person's shirt and/or gift right now (e.g. they're leaving).
+          const id = String(body.playerId || "");
+          const p = s.players[id];
+          if (!p) return "Can’t find that guest";
+          syncSwaps(s);
+          const a1 = s.shirtSwap.started && revealPerson(s.shirtSwap, id);
+          const a2 = s.giftSwap.started && revealPerson(s.giftSwap, id);
+          p.leaving = false;
+          return a1 || a2 ? null : `${p.name} has nothing left to reveal`;
+        }
+        case "clearLeaving": {
+          const p = s.players[String(body.playerId || "")];
+          if (p) p.leaving = false;
+          return null;
+        }
         case "reshuffle":
           reshuffleTeams(s);
           return null;

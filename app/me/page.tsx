@@ -15,7 +15,7 @@ type SwapV =
 type MeData = {
   joined: boolean;
   now: { activity: string; message: string; at: number; label?: string; emoji?: string };
-  me: { name: string; team: string; shirt: { size: string; teaser: string } | null; gift: boolean };
+  me: { name: string; team: string; shirt: { size: string; teaser: string } | null; gift: boolean; leaving?: boolean };
   impostor: { round: number; isImpostor: boolean; word: string | null; category: string | null; impostorCount: number } | null;
   mafia: { round: number; role: "mafia" | "doctor" | "detective" | "villager"; out: boolean; partners: string[] } | null;
   shirtSwap: SwapV;
@@ -146,6 +146,13 @@ export default function Me() {
       refresh();
     } catch (e) { setErr((e as Error).message); throw e; }
   };
+  // Still waiting on a shirt or gift reveal? Then offer "heading off" so the host can reveal early.
+  const awaitingReveal =
+    (!!data.me.shirt && data.shirtSwap?.status !== "revealed") || (data.me.gift && data.giftSwap?.status !== "revealed");
+  const leaving = async (on: boolean) => {
+    setErr("");
+    try { await post("/api/me", { id, action: "leaving", leaving: on }); refresh(); } catch (e) { setErr((e as Error).message); }
+  };
   const vote = async (key: string) => {
     setErr("");
     try { await post("/api/me", { id, action: "vote", key }); refresh(); } catch (e) { setErr((e as Error).message); }
@@ -203,6 +210,19 @@ export default function Me() {
           </Secret>
         </div>
       )}
+
+      {awaitingReveal ? (
+        <div className="card">
+          {data.me.leaving ? (
+            <p style={{ margin: 0 }}>🚪 The host knows you’re heading off and will reveal your swap{data.me.shirt && data.me.gift ? "s" : ""} shortly. <button type="button" className="btn ghost sm" onClick={() => leaving(false)}>Actually, I’m staying</button></p>
+          ) : (
+            <div className="row between">
+              <p style={{ margin: 0 }}>Heading off before your reveal?</p>
+              <button type="button" className="btn ghost sm" onClick={() => leaving(true)}>🚪 Tell the host</button>
+            </div>
+          )}
+        </div>
+      ) : null}
 
       <SwapCard title="Ugly T-shirt swap" emoji="👕" v={data.shirtSwap} noun="T-shirt" />
       <SwapCard title="Secret Santa" emoji="🎁" v={data.giftSwap} noun="gift" />

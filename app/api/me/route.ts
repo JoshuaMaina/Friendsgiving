@@ -1,5 +1,5 @@
 import { mutate, readState } from "@/lib/store";
-import { playerView, voteKey } from "@/lib/state";
+import { playerView, syncSwaps, voteKey } from "@/lib/state";
 import { bad, cleanText, json, validId } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +27,11 @@ export async function POST(req: Request) {
           ? { size: cleanText(body.shirt.size, 10), teaser: cleanText(body.shirt.teaser) }
           : null;
         p.gift = !!body.gift;
+        syncSwaps(s);
+        return null;
+      }
+      if (body.action === "leaving") {
+        p.leaving = !!body.leaving;
         return null;
       }
       if (body.action === "vote") {

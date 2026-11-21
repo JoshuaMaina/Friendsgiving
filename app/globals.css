@@ -188,3 +188,4 @@ dialog::backdrop { background: rgba(10, 20, 16, .7); overflow: hidden; overscrol
 }
 .photos-btn { margin-block: 0.875rem; background: var(--cream); }
 .reveal-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-block-start: 0.75rem; }
+.leaving-chip { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; background: var(--red); border-radius: 1rem; padding: 0.5rem 0.75rem; }

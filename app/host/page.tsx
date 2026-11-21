@@ -9,7 +9,10 @@ import { post } from "@/lib/client";
 type Admin = {
   usingRedis: boolean;
   now: { activity: string; message: string; at: number; label?: string; emoji?: string };
-  players: { id: string; name: string; team: string; shirt: { size: string; teaser: string } | null; gift: boolean }[];
+  players: {
+    id: string; name: string; team: string; shirt: { size: string; teaser: string } | null; gift: boolean;
+    leaving: boolean; pendingShirt: boolean; pendingGift: boolean;
+  }[];
   scores: Record<string, number>;
   shirtSwap: SwapA;
   giftSwap: SwapA;
@@ -203,6 +206,7 @@ function Host() {
       <Panel id="Swaps" tab={tab} setTab={setTab}>
         <SwapPanel title="👕 Ugly T-shirt swap" sw={s.shirtSwap} kind="shirt" call={call} busy={busy} what="T-shirts" />
         <SwapPanel title="🎁 Secret Santa" sw={s.giftSwap} kind="gift" call={call} busy={busy} what="gifts" />
+        <RevealSomeone s={s} call={call} busy={busy} />
       </Panel>
       <Panel id="Vote" tab={tab} setTab={setTab}><VoteTab s={s} call={call} busy={busy} /></Panel>
       <Panel id="QR" tab={tab} setTab={setTab}><QR /></Panel>
@@ -289,7 +293,7 @@ function Teams({ s, call, busy }: P) {
                       </select>
                     </td>
                     <td style={{ width: 30 }}>
-                      <button type="button" className="btn ghost sm" style={{ padding: "4px 9px" }} aria-label={`Remove ${p.name}`} onClick={async () => (await ask(`Remove ${p.name}?`, "They’ll need to join again to get a team.", "Remove")) && call("removePlayer", { playerId: p.id })}>✕</button>
+                      <button type="button" className="btn ghost sm" style={{ padding: "4px 9px" }} aria-label={`Remove ${p.name}`} onClick={async () => (await ask(`Remove ${p.name}?`, "Only for test entries or mistakes. Don’t remove people who’ve gone home: their shirt and gift are already part of the swap.", "Remove")) && call("removePlayer", { playerId: p.id })}>✕</button>
                     </td>
                   </tr>
                 ))}
@@ -445,7 +449,7 @@ function SwapPanel({ title, sw, kind, call, busy, what }: { title: string; sw: S
     <div className="card">
       <h3>{title}</h3>
       <p className="muted small">
-        {sw.eligible} checked in with {what}. Starting makes everyone’s matches in secret (never their own). Then you reveal them one at a time, whenever you like, even mid-spelling-bee. Each reveal pops up on the TV and every phone.
+        {sw.eligible} checked in with {what}. Start it as soon as 2 people have checked in: matches are made in secret (never their own), and anyone who checks in later is added automatically. Reveal them one at a time whenever you like, even mid-spelling-bee; each reveal pops up on the TV and every phone. If everyone’s been revealed and someone new arrives, they “steal” from someone already revealed, and both get a new pop-up.
       </p>
       {sw.waiting.length > 0 && <p className="pill" style={{ background: "#B8322A" }}>{sw.waiting.length} not in the swap yet: {sw.waiting.join(", ")}</p>}
       <div className="row" style={{ marginTop: "0.75rem" }}>
@@ -549,15 +553,52 @@ function RevealBar({ s, call, busy }: P) {
       ["gift", "🎁 Next Secret Santa", s.giftSwap],
     ] as const
   ).filter(([, , sw]) => sw.started && sw.revealedCount < sw.total);
-  if (!items.length) return null;
+  const leaving = s.players.filter((p) => p.leaving);
+  if (!items.length && !leaving.length) return null;
   return (
     <div className="reveal-bar">
+      {leaving.map((p) => {
+        const notStarted = (!!p.shirt && !s.shirtSwap.started) || (p.gift && !s.giftSwap.started);
+        return (
+          <div key={p.id} className="leaving-chip" role="group" aria-label={`${p.name} is heading off`}>
+            <span>🚪 <strong>{p.name}</strong> is heading off</span>
+            {(p.pendingShirt || p.pendingGift) && (
+              <button type="button" className="btn sm" disabled={busy} onClick={() => call("revealPerson", { playerId: p.id })}>
+                Reveal their {[p.pendingShirt && "shirt", p.pendingGift && "gift"].filter(Boolean).join(" + ")} now
+              </button>
+            )}
+            {notStarted && <span className="small">Start the swap on the Swaps tab first</span>}
+            <button type="button" className="btn ghost sm" disabled={busy} onClick={() => call("clearLeaving", { playerId: p.id })}>Dismiss</button>
+          </div>
+        );
+      })}
       {items.map(([kind, label, sw]) => (
         <button key={kind} type="button" className="btn sm" disabled={busy} onClick={() => call(kind === "shirt" ? "shirtReveal" : "giftReveal")}>
           {label} ({sw.revealedCount + 1}/{sw.total}){sw.upNext ? ` · ${sw.upNext}` : ""}
         </button>
       ))}
     </div>
+  );
+}
+
+/** Reveal one particular guest now, out of turn (e.g. they're leaving and didn't tap the button). */
+function RevealSomeone({ s, call, busy }: P) {
+  const pending = s.players.filter((p) => p.pendingShirt || p.pendingGift);
+  const [id, setId] = useState("");
+  if (!pending.length) return null;
+  return (
+    <form className="card" onSubmit={(e) => { e.preventDefault(); if (id) call("revealPerson", { playerId: id }); setId(""); }}>
+      <h3>🚪 Reveal someone now</h3>
+      <p className="muted small">For anyone leaving early: reveals their shirt and gift straight away, out of turn. Guests can also tap “Heading off soon?” on their phone; they’ll pop up at the top here.</p>
+      <label htmlFor="reveal-who">Guest</label>
+      <select id="reveal-who" name="reveal-who" required value={id} onChange={(e) => setId(e.target.value)}>
+        <option value="">Choose…</option>
+        {pending.map((p) => (
+          <option key={p.id} value={p.id}>{p.name} ({[p.pendingShirt && "shirt", p.pendingGift && "gift"].filter(Boolean).join(" + ")})</option>
+        ))}
+      </select>
+      <button type="submit" className="btn sm" style={{ marginTop: "0.75rem" }} disabled={busy}>Reveal now</button>
+    </form>
   );
 }
 
