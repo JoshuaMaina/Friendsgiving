@@ -2,6 +2,7 @@ import { mutate, readState, usingRedis } from "@/lib/store";
 import {
   emptyState,
   emptySwap,
+  balanceTeams,
   reshuffleTeams,
   revealAll,
   revealNext,
@@ -73,6 +74,7 @@ function adminView(s: State) {
     },
     now: s.now,
     photosUrl: s.photosUrl ?? "",
+    activeTeams: s.activeTeams ?? TEAMS.length,
     vote: { open: s.vote.open, count: Object.keys(s.vote.votes).length, results: voteResults(s) },
   };
 }
@@ -119,6 +121,16 @@ export async function POST(req: Request) {
         }
         case "reshuffle":
           reshuffleTeams(s);
+          return null;
+        case "setActiveTeams": {
+          const n = Math.round(Number(body.count));
+          if (!(n >= 1 && n <= TEAMS.length)) return `Pick 1 to ${TEAMS.length} teams`;
+          s.activeTeams = n;
+          if (body.balance) balanceTeams(s);
+          return null;
+        }
+        case "balance":
+          balanceTeams(s);
           return null;
         case "addScore": {
           if (!(body.team in s.scores)) return "Bad team";

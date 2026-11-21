@@ -20,6 +20,7 @@ type Admin = {
   mafia: { round: number; active: boolean; roles: { id: string; name: string; role: string; out: boolean }[] };
   vote: { open: boolean; count: number; results: { name: string; votes: number }[] };
   photosUrl: string;
+  activeTeams: number;
 };
 type SwapA = {
   started: boolean;
@@ -270,15 +271,44 @@ function Launch({ s, call, busy }: P) {
   );
 }
 
+/** How many teams are in play. New guests only join these; grow it as more people arrive. */
+function TeamsInPlay({ s, call, busy }: P) {
+  const [n, setN] = useState(s.activeTeams);
+  const [spread, setSpread] = useState(true);
+  const count = s.players.length;
+  return (
+    <form className="card" onSubmit={(e) => { e.preventDefault(); call("setActiveTeams", { count: n, balance: spread }); }}>
+      <fieldset>
+        <legend style={{ marginTop: 0 }}>Teams in play</legend>
+        <p className="muted small" style={{ marginTop: 0 }}>
+          New guests only join these teams. Start small (e.g. 2 teams for 10 people), then add teams as more people arrive. {count} checked in: about {Math.ceil(count / Math.max(1, n))} per team with {n}.
+        </p>
+        <div className="radios">
+          {TEAMS.map((t, i) => (
+            <label key={t.id}><input type="radio" name="teams-in-play" value={i + 1} checked={n === i + 1} onChange={() => setN(i + 1)} />{i + 1}</label>
+          ))}
+        </div>
+      </fieldset>
+      <label className="check">
+        <input type="checkbox" checked={spread} onChange={(e) => setSpread(e.target.checked)} />
+        <span>Also spread people out now (moves as few people as possible)</span>
+      </label>
+      <button type="submit" className="btn sm" style={{ marginTop: "0.875rem" }} disabled={busy || (n === s.activeTeams && !spread)}>Apply</button>
+    </form>
+  );
+}
+
 function Teams({ s, call, busy }: P) {
   const ask = useConfirm();
   return (
     <>
-      <div className="row" style={{ margin: "12px 0" }}>
-        <button type="button" className="btn sm" disabled={busy} onClick={async () => (await ask("Reshuffle everyone?", "Everyone gets dealt into new, even teams.", "Reshuffle")) && call("reshuffle")}>🔀 Reshuffle all teams</button>
+      <TeamsInPlay s={s} call={call} busy={busy} />
+      <div className="row" style={{ margin: "0.75rem 0" }}>
+        <button type="button" className="btn sm ghost" disabled={busy} onClick={() => call("balance")}>⚖️ Even out teams</button>
+        <button type="button" className="btn sm ghost" disabled={busy} onClick={async () => (await ask("Reshuffle everyone?", `Everyone gets dealt into ${s.activeTeams} new, even teams at random.`, "Reshuffle")) && call("reshuffle")}>🔀 Reshuffle everyone</button>
       </div>
       <div className="grid3">
-        {TEAMS.map((t) => {
+        {TEAMS.filter((t, i) => i < s.activeTeams || s.players.some((p) => p.team === t.id)).map((t) => {
           const members = s.players.filter((p) => p.team === t.id);
           return (
             <div key={t.id} className="card" style={{ borderTop: `6px solid ${t.color}` }}>

@@ -58,6 +58,7 @@ export type State = {
   vote: Vote;
   now: Now;
   photosUrl: string; // shared album link set by the host ('' = none)
+  activeTeams: number; // how many teams are in play (the first N); new guests only go into these
 };
 
 export const emptySwap = (): Swap => ({ started: false, round: 0, matches: {}, revealed: [], lastAt: 0 });
@@ -73,6 +74,7 @@ export const emptyState = (): State => ({
   now: { activity: "arrivals", message: "", at: 0 },
   // Shared Google Photos album; the host can change or clear it on the dashboard.
   photosUrl: "https://photos.app.goo.gl/rtwtxEgkvK9Ss9GP8",
+  activeTeams: TEAMS.length,
 });
 
 // ---------- helpers ----------
@@ -89,19 +91,63 @@ const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 
 // ---------- teams ----------
 /** Least-filled team wins; ties broken at random. */
-export function pickTeam(s: State): string {
+export const teamsInPlay = (s: State) =>
+  TEAMS.slice(0, Math.min(TEAMS.length, Math.max(1, s.activeTeams || TEAMS.length)));
+
+const teamCounts = (s: State) => {
   const counts = Object.fromEntries(TEAMS.map((t) => [t.id, 0])) as Record<string, number>;
   for (const p of Object.values(s.players)) if (p.team in counts) counts[p.team]++;
-  const min = Math.min(...Object.values(counts));
-  return pick(TEAMS.filter((t) => counts[t.id] === min).map((t) => t.id));
+  return counts;
+};
+
+/** Least-filled team in play wins; ties broken at random. */
+export function pickTeam(s: State): string {
+  const counts = teamCounts(s);
+  const live = teamsInPlay(s);
+  const min = Math.min(...live.map((t) => counts[t.id]));
+  return pick(live.filter((t) => counts[t.id] === min).map((t) => t.id));
 }
 
-/** Deal everyone out again, evenly, in random order. */
+/** Deal everyone out again, evenly, across the teams in play, in random order. */
 export function reshuffleTeams(s: State) {
-  const order = shuffle(TEAMS.map((t) => t.id));
+  const order = shuffle(teamsInPlay(s).map((t) => t.id));
   shuffle(Object.values(s.players)).forEach((p, i) => {
     p.team = order[i % order.length];
   });
+}
+
+/**
+ * Even out teams across the teams in play, moving as few people as possible:
+ * anyone in a team that's out of play, then the most recent arrivals from the biggest teams,
+ * go to the smallest teams. Returns how many people moved.
+ */
+export function balanceTeams(s: State): number {
+  const live: string[] = teamsInPlay(s).map((t) => t.id);
+  const players = Object.values(s.players).sort((a, b) => a.joinedAt - b.joinedAt);
+  const n = players.length;
+  const base = Math.floor(n / live.length);
+  let extra = n % live.length;
+  const counts = teamCounts(s);
+  // Teams already biggest keep the "+1" slots, so fewer people move.
+  const target: Record<string, number> = {};
+  [...live].sort((a, b) => counts[b] - counts[a]).forEach((id) => {
+    target[id] = base + (extra > 0 ? 1 : 0);
+    if (extra > 0) extra--;
+  });
+  const movers: Player[] = players.filter((p) => !live.includes(p.team));
+  for (const id of live) {
+    const members = players.filter((p) => p.team === id);
+    movers.push(...members.slice(target[id]).reverse()); // newest leave first
+  }
+  let moved = 0;
+  for (const p of movers) {
+    const now = teamCounts(s);
+    const dest = live.filter((id) => now[id] < target[id]).sort((a, b) => now[a] - now[b])[0];
+    if (!dest || dest === p.team) continue;
+    p.team = dest;
+    moved++;
+  }
+  return moved;
 }
 
 // ---------- swaps (T-shirts, gifts) ----------
@@ -319,7 +365,10 @@ function wornBy(s: State, ownerId: string): string | null {
 export const voteKey = (p: Player) => `${p.name}::${p.joinedAt}`;
 
 export function publicView(s: State) {
-  const teams = TEAMS.map((t) => ({
+  const live = new Set(teamsInPlay(s).map((t) => t.id));
+  const teams = TEAMS.filter(
+    (t) => live.has(t.id) || (s.scores[t.id] ?? 0) !== 0 || Object.values(s.players).some((p) => p.team === t.id),
+  ).map((t) => ({
     id: t.id,
     members: Object.values(s.players)
       .filter((p) => p.team === t.id)
