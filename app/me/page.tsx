@@ -16,7 +16,7 @@ type MeData = {
   joined: boolean;
   now: { activity: string; message: string; at: number; label?: string; emoji?: string };
   me: { name: string; team: string; shirt: { size: string; teaser: string } | null; gift: boolean; leaving?: boolean };
-  impostor: { round: number; isImpostor: boolean; word: string | null; category: string | null; impostorCount: number } | null;
+  impostor: { round: number; undercover: boolean; isImpostor: boolean; word: string | null; category: string | null; impostorCount: number | null } | null;
   mafia: { round: number; role: "mafia" | "doctor" | "detective" | "villager"; out: boolean; partners: string[] } | null;
   shirtSwap: SwapV;
   giftSwap: SwapV;
@@ -180,7 +180,13 @@ export default function Me() {
         <div className="card">
           <p className="eyebrow">🕵🏾 Impostor · round {data.impostor.round}</p>
           <Secret label="Show my card">
-            {data.impostor.isImpostor ? (
+            {data.impostor.undercover ? (
+              <>
+                <span className="muted small">Your word</span>
+                <span className="big-word">{data.impostor.word}</span>
+                <span className="small">Take turns giving a one-word clue. If the others’ clues don’t quite fit your word… you might be the impostor 👀</span>
+              </>
+            ) : data.impostor.isImpostor ? (
               <>
                 <span className="pill" style={{ background: "#B8322A", color: "#F8F3E6" }}>Shh…</span>
                 <span className="big-word">You’re the IMPOSTOR</span>

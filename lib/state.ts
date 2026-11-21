@@ -1,5 +1,5 @@
 import { TEAMS } from "./teams";
-import { WORDS, CATEGORIES } from "./words";
+import { WORDS, CATEGORIES, PAIRS, WILD } from "./words";
 
 export type Player = {
   id: string; // secret per-device id, never sent to other players
@@ -32,6 +32,10 @@ export type Impostor = {
   showCategory: boolean;
   impostors: string[];
   players: string[];
+  /** classic: impostors are told and get no word. undercover: impostors get a different word and aren't told. */
+  mode?: "classic" | "undercover";
+  impostorWord?: string;
+  twist?: "similar" | "random";
 };
 
 export type MafiaRole = "mafia" | "doctor" | "detective" | "villager";
@@ -249,21 +253,38 @@ export function upNext(swap: Swap): string | null {
 }
 
 // ---------- impostor ----------
-export function startImpostor(s: State, count: number, category: string, showCategory: boolean) {
+export function startImpostor(
+  s: State,
+  count: number,
+  category: string,
+  showCategory: boolean,
+  mode: "classic" | "undercover" = "classic",
+  twist: "similar" | "random" = "random",
+) {
   const ids = Object.keys(s.players);
   const n = Math.max(1, Math.min(count, ids.length - 1));
+  const impostors = shuffle(ids).slice(0, n);
+  const base = { round: s.impostor.round + 1, active: true, showCategory, impostors, players: ids, mode };
+
+  if (mode === "undercover" && twist === "similar") {
+    let pair = pick(PAIRS);
+    if (PAIRS.length > 1) while (pair.includes(s.impostor.word)) pair = pick(PAIRS);
+    const [crowd, odd] = Math.random() < 0.5 ? pair : [pair[1], pair[0]];
+    s.impostor = { ...base, category: "", word: crowd, impostorWord: odd, twist };
+    return;
+  }
+
   const cat = category && WORDS[category] ? category : pick(CATEGORIES);
   let word = pick(WORDS[cat]);
   if (WORDS[cat].length > 1) while (word === s.impostor.word) word = pick(WORDS[cat]);
-  s.impostor = {
-    round: s.impostor.round + 1,
-    active: true,
-    category: cat,
-    word,
-    showCategory,
-    impostors: shuffle(ids).slice(0, n),
-    players: ids,
-  };
+
+  if (mode === "undercover") {
+    // Totally random: something from a different world entirely.
+    const pool = [...WILD, ...CATEGORIES.filter((c) => c !== cat).flatMap((c) => WORDS[c])];
+    s.impostor = { ...base, category: cat, word, impostorWord: pick(pool), twist: "random" };
+    return;
+  }
+  s.impostor = { ...base, category: cat, word };
 }
 
 // ---------- mafia ----------
@@ -290,9 +311,20 @@ export function playerView(s: State, id: string) {
   if (!p) return null;
   const imp = s.impostor;
   let impostor = null;
-  if (imp.active && imp.players.includes(id)) {
+  if (imp.active && imp.players.includes(id) && imp.mode === "undercover") {
+    // Identical shape for everyone, so nobody can tell from their screen (or the network) that they're the odd one out.
+    impostor = {
+      round: imp.round,
+      undercover: true as const,
+      isImpostor: false,
+      word: imp.impostors.includes(id) ? imp.impostorWord ?? "" : imp.word,
+      category: null,
+      impostorCount: null, // secret in undercover: nobody (host included) is told how many
+    };
+  } else if (imp.active && imp.players.includes(id)) {
     const isImp = imp.impostors.includes(id);
     impostor = {
+      undercover: false as const,
       round: imp.round,
       isImpostor: isImp,
       word: isImp ? null : imp.word,

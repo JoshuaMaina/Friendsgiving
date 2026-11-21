@@ -29,3 +29,31 @@ export const WORDS: Record<string, string[]> = {
 };
 
 export const CATEGORIES = Object.keys(WORDS);
+
+// Undercover mode, "similar word": the crowd gets one, impostors get the other
+// (which side is which is picked at random each round).
+export const PAIRS: [string, string][] = [
+  ["Chimpanzee", "Gorilla"], ["Penguin", "Polar bear"], ["Shark", "Dolphin"], ["Owl", "Eagle"],
+  ["Camel", "Horse"], ["Crocodile", "Lizard"], ["Hamster", "Guinea pig"], ["Flamingo", "Peacock"],
+  ["Snowman", "Gingerbread man"], ["Mince pie", "Christmas pudding"], ["Reindeer", "Sleigh"],
+  ["Christmas tree", "Wreath"], ["Stocking", "Advent calendar"], ["Elf", "Santa"], ["Mulled wine", "Eggnog"],
+  ["Tinsel", "Fairy lights"], ["Carol singers", "Choir"], ["Boxing Day", "New Year’s Eve"],
+  ["Jollof rice", "Fried rice"], ["Sushi", "Ramen"], ["Pizza", "Burger"], ["Pancakes", "Waffles"],
+  ["Curry", "Stew"], ["Tacos", "Burritos"], ["Doughnut", "Cupcake"], ["Fish and chips", "Kebab"],
+  ["Suya", "Barbecue"], ["Plantain", "Banana"], ["Roast dinner", "Sunday lunch"],
+  ["Airport", "Train station"], ["Hospital", "Dentist"], ["Gym", "Swimming pool"], ["Beach", "Desert"],
+  ["Cinema", "Theatre"], ["Nightclub", "House party"], ["Library", "Bookshop"], ["Zoo", "Safari"],
+  ["Wedding", "Birthday party"], ["Church", "Wedding venue"], ["Barbershop", "Nail salon"],
+  ["Karaoke", "Rap battle"], ["Bowling", "Mini golf"], ["Skiing", "Snowboarding"], ["Camping", "Glamping"],
+  ["Escape room", "Murder mystery"], ["Yoga", "Pilates"], ["Speed dating", "Blind date"],
+  ["Job interview", "First date"], ["Moving house", "Spring cleaning"],
+  ["Umbrella", "Raincoat"], ["Toothbrush", "Floss"], ["Selfie stick", "Tripod"], ["Microwave", "Air fryer"],
+  ["Passport", "Driving licence"], ["Headphones", "Speaker"], ["Hot water bottle", "Electric blanket"],
+  ["Lipstick", "Lip gloss"], ["Suitcase", "Backpack"], ["Candle", "Torch"], ["Remote control", "Game controller"],
+];
+
+/** Wildly different words for "totally random" undercover rounds. */
+export const WILD = [
+  "The universe", "Volcano", "Toilet roll", "Spaceship", "Grandma", "Black hole", "Tax return", "Unicorn",
+  "Dinosaur", "Lighthouse", "Submarine", "Pyramid", "Robot", "Tornado", "Mermaid", "Wi-Fi password",
+];

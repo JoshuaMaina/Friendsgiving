@@ -60,10 +60,13 @@ function adminView(s: State) {
     scores: s.scores,
     shirtSwap: swap(s.shirtSwap, players.filter((p) => p.shirt).map((p) => p.id)),
     giftSwap: swap(s.giftSwap, players.filter((p) => p.gift).map((p) => p.id)),
+    // The answer (words + who) is not sent here, so the host can play too; see "impostorAnswer".
     impostor: {
-      ...s.impostor,
-      impostors: s.impostor.impostors.map(name),
+      round: s.impostor.round,
+      active: s.impostor.active,
       players: s.impostor.players.length,
+      mode: s.impostor.mode ?? "classic",
+      twist: s.impostor.twist ?? null,
     },
     mafia: {
       round: s.mafia.round,
@@ -89,6 +92,16 @@ export async function POST(req: Request) {
   }
   const a: string = body.action;
   if (a === "state") return json(adminView(await readState()));
+  if (a === "impostorAnswer") {
+    const st = await readState();
+    const im = st.impostor;
+    return json({
+      word: im.word,
+      impostorWord: im.impostorWord ?? null,
+      category: im.category,
+      impostors: im.impostors.map((id) => st.players[id]?.name ?? "(left)"),
+    });
+  }
 
   try {
     const err = await mutate((s): string | null => {
@@ -142,7 +155,17 @@ export async function POST(req: Request) {
           return null;
         case "impostorStart":
           if (Object.keys(s.players).length < 3) return "Need at least 3 players";
-          startImpostor(s, Number(body.count) || 2, body.category || "", body.showCategory !== false);
+          startImpostor(
+            s,
+            // "surprise": 1–3 impostors (never more than a third of the room), picked secretly
+            body.count === "surprise"
+              ? 1 + Math.floor(Math.random() * Math.max(1, Math.min(3, Math.floor(Object.keys(s.players).length / 3))))
+              : Number(body.count) || 2,
+            body.category || "",
+            body.showCategory !== false,
+            body.mode === "undercover" ? "undercover" : "classic",
+            body.twist === "similar" ? "similar" : "random",
+          );
           setNow(s, "impostor");
           return null;
         case "impostorEnd":

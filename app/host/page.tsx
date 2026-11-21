@@ -16,7 +16,7 @@ type Admin = {
   scores: Record<string, number>;
   shirtSwap: SwapA;
   giftSwap: SwapA;
-  impostor: { round: number; active: boolean; category: string; word: string; showCategory: boolean; impostors: string[]; players: number };
+  impostor: { round: number; active: boolean; players: number; mode: "classic" | "undercover"; twist: "similar" | "random" | null };
   mafia: { round: number; active: boolean; roles: { id: string; name: string; role: string; out: boolean }[] };
   vote: { open: boolean; count: number; results: { name: string; votes: number }[] };
   photosUrl: string;
@@ -360,57 +360,87 @@ function Scores({ s, call, busy }: P) {
 }
 
 function ImpostorTab({ s, call, busy }: P) {
-  const [count, setCount] = useState(2);
+  const [mode, setMode] = useState<"undercover" | "classic">("undercover");
+  const [twist, setTwist] = useState<"random" | "similar">("random");
+  const [count, setCount] = useState<number | "surprise">("surprise");
   const [cat, setCat] = useState("");
   const [showCat, setShowCat] = useState(true);
-  const [peek, setPeek] = useState(false);
+  const [answer, setAnswer] = useState<{ word: string; impostorWord: string | null; category: string; impostors: string[] } | null>(null);
+  const [pin] = useState(() => { try { return sessionStorage.getItem("fg-pin") || ""; } catch { return ""; } });
   const im = s.impostor;
+  const reveal = async () => {
+    try { setAnswer(await post("/api/host", { pin, action: "impostorAnswer" })); } catch {}
+  };
   return (
     <>
-      <div className="card">
+      <form className="card" onSubmit={(e) => { e.preventDefault(); setAnswer(null); call("impostorStart", { count, category: cat, showCategory: showCat, mode, twist }); }}>
         <h3>Start a round</h3>
-        <p className="muted small">Everyone checked in ({s.players.length}) gets a card. Everyone sees the secret word except the impostors.</p>
-        <div className="grid3">
+        <fieldset>
+          <legend style={{ marginTop: 0 }}>Game style</legend>
+          <div className="radios">
+            <label><input type="radio" name="imp-mode" checked={mode === "undercover"} onChange={() => setMode("undercover")} />🤫 Undercover</label>
+            <label><input type="radio" name="imp-mode" checked={mode === "classic"} onChange={() => setMode("classic")} />🕵🏾 Classic</label>
+          </div>
+          <p className="hint">
+            {mode === "undercover"
+              ? "Everyone just sees “your word”. Impostors get a different word and aren’t told. Nobody, not even you, knows who or how many. Work it out from the clues."
+              : "Everyone sees the same word; impostors are told they’re the impostor and get no word (just the category, if you allow it)."}
+          </p>
+        </fieldset>
+        {mode === "undercover" && (
           <fieldset>
-            <legend>Impostors</legend>
+            <legend>Impostors’ word</legend>
             <div className="radios">
-              {[1, 2, 3, 4].map((n) => (
-                <label key={n}><input type="radio" name="impostors" value={n} checked={count === n} onChange={() => setCount(n)} />{n}</label>
-              ))}
+              <label><input type="radio" name="imp-twist" checked={twist === "random"} onChange={() => setTwist("random")} />🌌 Totally random</label>
+              <label><input type="radio" name="imp-twist" checked={twist === "similar"} onChange={() => setTwist("similar")} />🦍 Similar</label>
             </div>
+            <p className="hint">{twist === "random" ? "e.g. crowd: Chimpanzee, impostor: The universe. Chaotic and funny." : "e.g. crowd: Chimpanzee, impostor: Gorilla. Sneaky: impostors may not realise for ages."}</p>
           </fieldset>
-          <div>
-            <label htmlFor="imp-cat">Category</label>
-            <select id="imp-cat" value={cat} onChange={(e) => setCat(e.target.value)}>
-              <option value="">Random</option>
-              {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-            </select>
+        )}
+        <fieldset>
+          <legend>Impostors</legend>
+          <div className="radios">
+            <label><input type="radio" name="impostors" checked={count === "surprise"} onChange={() => setCount("surprise")} />🎲 Surprise (1–3)</label>
+            {[1, 2, 3, 4].map((n) => (
+              <label key={n}><input type="radio" name="impostors" value={n} checked={count === n} onChange={() => setCount(n)} />{n}</label>
+            ))}
           </div>
-          <div>
-            <label className="check" style={{ marginTop: 40 }}>
-              <input type="checkbox" checked={showCat} onChange={(e) => setShowCat(e.target.checked)} />
-              <span>Impostors see category</span>
-            </label>
+          {count === "surprise" && <p className="hint">The site picks secretly, so you can play too.</p>}
+        </fieldset>
+        {!(mode === "undercover" && twist === "similar") && (
+          <div className="grid2">
+            <div>
+              <label htmlFor="imp-cat">Category</label>
+              <select id="imp-cat" value={cat} onChange={(e) => setCat(e.target.value)}>
+                <option value="">Random</option>
+                {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            {mode === "classic" && (
+              <label className="check" style={{ marginTop: "2.5rem" }}>
+                <input type="checkbox" checked={showCat} onChange={(e) => setShowCat(e.target.checked)} />
+                <span>Impostors see category</span>
+              </label>
+            )}
           </div>
-        </div>
-        <div className="row" style={{ marginTop: 16 }}>
-          <button type="button" className="btn" disabled={busy} onClick={() => { setPeek(false); call("impostorStart", { count, category: cat, showCategory: showCat }); }}>
-            {im.active ? "🔁 New round" : "▶️ Start round"}
-          </button>
+        )}
+        <div className="row" style={{ marginTop: "1rem" }}>
+          <button type="submit" className="btn" disabled={busy}>{im.active ? "🔁 New round" : "▶️ Start round"}</button>
           {im.active && <button type="button" className="btn ghost" disabled={busy} onClick={() => call("impostorEnd")}>⏹ End game</button>}
         </div>
-      </div>
+      </form>
       {im.active && (
         <div className="card light">
-          <p className="eyebrow" style={{ color: "#B8322A" }}>Round {im.round} · {im.players} players</p>
-          {peek ? (
+          <p className="eyebrow" style={{ color: "#B8322A" }}>Round {im.round} · {im.players} players · {im.mode === "undercover" ? "Undercover" : "Classic"}</p>
+          <p className="small">You get a card on your phone like everyone else. The answer stays hidden until you reveal it.</p>
+          {answer ? (
             <>
-              <p>Word: <strong>{im.word}</strong> ({im.category})</p>
-              <p>Impostors: <strong>{im.impostors.join(", ")}</strong></p>
-              <button type="button" className="btn ghost sm" onClick={() => setPeek(false)}>Hide</button>
+              <p>Crowd’s word: <strong>{answer.word}</strong>{answer.impostorWord && <> · Impostors’ word: <strong>{answer.impostorWord}</strong></>}</p>
+              <p>Impostor{answer.impostors.length === 1 ? "" : "s"} ({answer.impostors.length}): <strong>{answer.impostors.join(", ")}</strong></p>
+              <button type="button" className="btn ghost sm" onClick={() => setAnswer(null)}>Hide</button>
             </>
           ) : (
-            <button type="button" className="btn sm" onClick={() => setPeek(true)}>👀 Reveal answer (for the end)</button>
+            <button type="button" className="btn sm" onClick={reveal}>👀 Reveal answer (end of round)</button>
           )}
         </div>
       )}
