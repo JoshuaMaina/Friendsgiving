@@ -189,3 +189,28 @@ dialog::backdrop { background: rgba(10, 20, 16, .7); overflow: hidden; overscrol
 .photos-btn { margin-block: 0.875rem; background: var(--cream); }
 .reveal-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-block-start: 0.75rem; }
 .leaving-chip { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; background: var(--red); border-radius: 1rem; padding: 0.5rem 0.75rem; }
+
+/* /tv: fills the screen, no scrolling. Sized from the viewport so it reads across a room. */
+.tv {
+  position: relative; z-index: 1; block-size: 100dvh; overflow: hidden;
+  display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 3vmin; padding: 4vmin;
+}
+.tv-now {
+  background: var(--red); border-radius: 3vmin; padding: 5vmin;
+  display: flex; flex-direction: column; justify-content: center; gap: 2vmin; min-block-size: 0;
+}
+.tv-eyebrow { font-size: max(1rem, 2.4vmin); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin: 0; }
+.tv-title { font-size: max(2.5rem, 10vmin); line-height: 1.02; margin: 0; overflow-wrap: anywhere; }
+.tv-msg { font-size: max(1.25rem, 4.2vmin); line-height: 1.25; margin: 0; }
+.tv-count { font-size: max(1rem, 3vmin); margin: auto 0 0; opacity: .9; }
+.tv-qr {
+  background: var(--cream); color: var(--green); border-radius: 3vmin; padding: 4vmin;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5vmin; min-block-size: 0;
+}
+.tv-qr h2 { font-size: max(1.5rem, 5vmin); margin: 0; }
+.tv-qr-box { flex: 1; min-block-size: 0; aspect-ratio: 1; max-inline-size: 100%; }
+.tv-qr-box img { display: block; inline-size: 100%; block-size: 100%; object-fit: contain; }
+.tv-url { font: 600 max(1rem, 2.8vmin) "Fredoka", system-ui, sans-serif; margin: 0; overflow-wrap: anywhere; text-align: center; }
+@media (orientation: portrait) {
+  .tv { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+}

@@ -105,7 +105,7 @@ export default function Home() {
         <p>🐝 The Great Festive Spelling Bee (in teams)</p>
         <p>🕵🏾 Impostor</p>
         <p>🔪 Mafia</p>
-        <p>🍷 Mulled wine, food and a bash to finish</p>
+        <p>🍷 Mulled wine, snacks all night and a bash to finish</p>
         <p className="muted small">No fixed times. We’ll kick things off as the night goes. Watch your party page.</p>
       </div>
 

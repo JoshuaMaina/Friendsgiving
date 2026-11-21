@@ -1,7 +1,6 @@
 // What the host can put up as "happening now". Phones show it at the top, live.
 export const ACTIVITIES: Record<string, { label: string; emoji: string; blurb: string }> = {
   arrivals: { label: "Arrivals", emoji: "🍷", blurb: "Grab a mulled wine, find your team and say hi." },
-  food: { label: "Food time", emoji: "🍗", blurb: "Food’s ready. Come and get it!" },
   spellingbee: { label: "Spelling bee", emoji: "🐝", blurb: "Sit with your team. The Great Festive Spelling Bee is starting." },
   impostor: { label: "Impostor", emoji: "🕵🏾", blurb: "Check your card below. Don’t let anyone see your screen!" },
   mafia: { label: "Mafia", emoji: "🔪", blurb: "Check your secret role below, then hide your screen." },
