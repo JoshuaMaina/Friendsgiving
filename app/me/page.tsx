@@ -5,7 +5,7 @@ import { getDeviceId, post, usePoll } from "@/lib/client";
 import { teamById } from "@/lib/teams";
 import { activity } from "@/lib/activities";
 import { RevealPopup, type Reveal } from "@/components/RevealPopup";
-import { PhotosButton } from "@/components/PhotosButton";
+import { MusicButton, PhotosButton } from "@/components/PhotosButton";
 
 type SwapV =
   | { status: "queue"; done: number; total: number }
@@ -22,7 +22,7 @@ type MeData = {
   giftSwap: SwapV;
   vote: { myVote: string | null; candidates: { key: string; name: string; teaser: string; wornBy: string | null }[] } | null;
 };
-type Pub = { teams: { id: string; members: string[]; score: number }[]; photosUrl?: string; reveals?: Reveal[] };
+type Pub = { teams: { id: string; members: string[]; score: number }[]; photosUrl?: string; musicUrl?: string; reveals?: Reveal[] };
 
 const ROLE: Record<string, { title: string; emoji: string; text: string }> = {
   mafia: { title: "Mafia", emoji: "🔪", text: "Each night, agree with the other Mafia who to take out. Act innocent by day." },
@@ -166,6 +166,7 @@ export default function Me() {
       </div>
 
       <RevealPopup reveals={pub?.reveals} me={data.me.name} />
+      {pub?.musicUrl && <MusicButton url={pub.musicUrl} />}
       {pub?.photosUrl && <PhotosButton url={pub.photosUrl} />}
 
       {/* Happening now */}

@@ -8,6 +8,7 @@ import { RevealPopup, type Reveal } from "@/components/RevealPopup";
 type Pub = {
   now: { activity: string; message: string; at: number; label?: string; emoji?: string };
   playerCount: number;
+  musicUrl?: string;
   reveals?: Reveal[];
 };
 
@@ -24,6 +25,13 @@ export default function TV() {
     setUrl(u.replace(/^https?:\/\//, ""));
     QRCode.toDataURL(u, { width: 900, margin: 1, color: { dark: "#13261F", light: "#F8F3E6" } }).then(setSrc);
   }, []);
+
+  const [jamSrc, setJamSrc] = useState("");
+  const musicUrl = data?.musicUrl ?? "";
+  useEffect(() => {
+    if (!musicUrl) { setJamSrc(""); return; }
+    QRCode.toDataURL(musicUrl, { width: 400, margin: 1, color: { dark: "#13261F", light: "#F8F3E6" } }).then(setJamSrc);
+  }, [musicUrl]);
 
   const at = data?.now?.at ?? null;
   useEffect(() => {
@@ -44,7 +52,15 @@ export default function TV() {
           <span aria-hidden="true">{act.emoji}</span> {act.label}
         </h1>
         <p className="tv-msg">{data?.now?.message || act.blurb}</p>
-        <p className="tv-count">👥 {data?.playerCount ?? 0} checked in</p>
+        <div className="tv-foot">
+          <p className="tv-count">👥 {data?.playerCount ?? 0} checked in</p>
+          {jamSrc && (
+            <div className="tv-jam">
+              <img src={jamSrc} alt="QR code for the Spotify Jam: scan to add songs" width={400} height={400} />
+              <p>🎵 Scan to add songs</p>
+            </div>
+          )}
+        </div>
       </section>
       <section className="tv-qr" aria-labelledby="tv-qr-title">
         <h2 id="tv-qr-title">📱 Scan to join</h2>

@@ -77,6 +77,7 @@ function adminView(s: State) {
     },
     now: s.now,
     photosUrl: s.photosUrl ?? "",
+    musicUrl: s.musicUrl ?? "",
     activeTeams: s.activeTeams ?? TEAMS.length,
     vote: { open: s.vote.open, count: Object.keys(s.vote.votes).length, results: voteResults(s) },
   };
@@ -238,7 +239,8 @@ export async function POST(req: Request) {
             s.now.emoji = [...String(body.emoji || "🎲").trim()].slice(0, 2).join("") || "🎲";
           }
           return null;
-        case "setPhotos": {
+        case "setPhotos":
+        case "setMusic": {
           const u = String(body.url || "").trim();
           if (u) {
             try {
@@ -248,7 +250,8 @@ export async function POST(req: Request) {
               return "That doesn’t look like a link";
             }
           }
-          s.photosUrl = u.slice(0, 500);
+          if (a === "setPhotos") s.photosUrl = u.slice(0, 500);
+          else s.musicUrl = u.slice(0, 500);
           return null;
         }
         case "resetAll":

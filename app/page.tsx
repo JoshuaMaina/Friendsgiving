@@ -5,9 +5,9 @@ import QRCode from "qrcode";
 import { getDeviceId, usePoll } from "@/lib/client";
 import { activity } from "@/lib/activities";
 import { RevealPopup, type Reveal } from "@/components/RevealPopup";
-import { PhotosButton } from "@/components/PhotosButton";
+import { MusicButton, PhotosButton } from "@/components/PhotosButton";
 
-type Pub = { now: { activity: string; message: string; at: number; label?: string; emoji?: string }; playerCount: number; photosUrl?: string; reveals?: Reveal[] };
+type Pub = { now: { activity: string; message: string; at: number; label?: string; emoji?: string }; playerCount: number; photosUrl?: string; musicUrl?: string; reveals?: Reveal[] };
 
 /** Big join QR, so the home page can sit on the TV. */
 function JoinQR() {
@@ -71,6 +71,7 @@ export default function Home() {
       <h1>Friendsgiving 🎄</h1>
       <p className="lede">Christmas with friends: games, mulled wine and good vibes.</p>
       <NowBanner data={data} />
+      {data?.musicUrl && <MusicButton url={data.musicUrl} />}
       {data?.photosUrl && <PhotosButton url={data.photosUrl} />}
 
       <div style={{ margin: "1.375rem 0" }}>

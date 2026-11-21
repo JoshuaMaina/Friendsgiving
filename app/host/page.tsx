@@ -20,6 +20,7 @@ type Admin = {
   mafia: { round: number; active: boolean; roles: { id: string; name: string; role: string; out: boolean }[] };
   vote: { open: boolean; count: number; results: { name: string; votes: number }[] };
   photosUrl: string;
+  musicUrl: string;
   activeTeams: number;
 };
 type SwapA = {
@@ -261,7 +262,8 @@ function Launch({ s, call, busy }: P) {
         <div className="card"><h3>🎁 {s.players.filter((p) => p.gift).length}</h3><p className="muted small">brought gifts</p></div>
       </div>
       <p className="muted small">Shortcuts: put the home page or <a href="/scores" target="_blank">/scores</a> on the TV. Both update live.</p>
-      <PhotosForm s={s} call={call} busy={busy} />
+      <LinkForm s={s} call={call} busy={busy} field="music" />
+      <LinkForm s={s} call={call} busy={busy} field="photos" />
       <div className="card">
         <h3>🧹 Start fresh</h3>
         <p className="muted small">Clears every guest, team, score, game, swap and vote. Use after testing, before the party.</p>
@@ -585,20 +587,26 @@ function CustomGame({ call, busy }: { call: P["call"]; busy: boolean }) {
   );
 }
 
-function PhotosForm({ s, call, busy }: P) {
-  const [url, setUrl] = useState(s.photosUrl);
+function LinkForm({ s, call, busy, field }: P & { field: "photos" | "music" }) {
+  const current = field === "photos" ? s.photosUrl : s.musicUrl;
+  const [url, setUrl] = useState(current);
   const [saved, setSaved] = useState("");
+  const id = `${field}-url`;
   return (
     <form
       className="card"
-      onSubmit={async (e) => { e.preventDefault(); if (await call("setPhotos", { url })) setSaved(url ? "Saved: the button is live ✓" : "Removed ✓"); }}
+      onSubmit={async (e) => { e.preventDefault(); if (await call(field === "photos" ? "setPhotos" : "setMusic", { url })) setSaved(url ? "Saved: live now ✓" : "Removed ✓"); }}
     >
-      <h3>📸 Shared photo album</h3>
-      <label htmlFor="photos-url">Album link</label>
-      <input id="photos-url" name="photos-url" type="url" inputMode="url" autoComplete="url" value={url} onChange={(e) => { setUrl(e.target.value); setSaved(""); }} aria-describedby="photos-hint" />
-      <p id="photos-hint" className="hint">e.g. a Google Photos shared album with collaboration on. Shows an “Add your photos” button on the home page and everyone’s party page. Leave empty to hide it.</p>
+      <h3>{field === "photos" ? "📸 Shared photo album" : "🎵 Spotify Jam"}</h3>
+      <label htmlFor={id}>{field === "photos" ? "Album link" : "Jam link"}</label>
+      <input id={id} name={id} type="url" inputMode="url" autoComplete="url" value={url} onChange={(e) => { setUrl(e.target.value); setSaved(""); }} aria-describedby={`${id}-hint`} />
+      <p id={`${id}-hint`} className="hint">
+        {field === "photos"
+          ? "Shows an “Add your photos” button on the home page and everyone’s party page. Leave empty to hide it."
+          : "Spotify → devices icon → Start a Jam → Share link. Shows an “Add songs” QR on /tv and a button on party pages. If you restart the Jam, paste the new link here."}
+      </p>
       <div className="row" style={{ marginTop: "0.75rem" }}>
-        <button type="submit" className="btn sm" disabled={busy || url === s.photosUrl}>Save link</button>
+        <button type="submit" className="btn sm" disabled={busy || url === current}>Save link</button>
         <span className="small" role="status">{saved}</span>
       </div>
     </form>

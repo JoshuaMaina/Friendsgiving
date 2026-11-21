@@ -63,6 +63,7 @@ export type State = {
   now: Now;
   photosUrl: string; // shared album link set by the host ('' = none)
   activeTeams: number; // how many teams are in play (the first N); new guests only go into these
+  musicUrl?: string; // Spotify Jam link so guests can queue songs ('' = none)
 };
 
 export const emptySwap = (): Swap => ({ started: false, round: 0, matches: {}, revealed: [], lastAt: 0 });
@@ -79,6 +80,7 @@ export const emptyState = (): State => ({
   // Shared Google Photos album; the host can change or clear it on the dashboard.
   photosUrl: "https://photos.app.goo.gl/rtwtxEgkvK9Ss9GP8",
   activeTeams: TEAMS.length,
+  musicUrl: "https://open.spotify.com/socialsession/7ca32iVSeIyrOPNPq4rI4n?si=Uj45cFZcQJiwqGBpcJ5SyA",
 });
 
 // ---------- helpers ----------
@@ -417,6 +419,7 @@ export function publicView(s: State) {
     gifts,
     now: s.now,
     photosUrl: s.photosUrl ?? "",
+    musicUrl: s.musicUrl ?? "",
     reveals: [latestReveal(s, "shirt"), latestReveal(s, "gift")].filter(Boolean),
   };
 }

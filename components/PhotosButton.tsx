@@ -6,3 +6,12 @@ export function PhotosButton({ url }: { url: string }) {
     </a>
   );
 }
+
+/** Link to the Spotify Jam so guests can queue songs. */
+export function MusicButton({ url }: { url: string }) {
+  return (
+    <a className="btn block photos-btn" href={url} target="_blank" rel="noopener">
+      🎵 Add songs to the party playlist ↗
+    </a>
+  );
+}
