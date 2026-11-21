@@ -48,6 +48,35 @@ export type Mafia = {
 
 export type Vote = { open: boolean; votes: Record<string, string> };
 
+/** Gifts dropped in a pile: guests take turns going up to pick one, in a random order. */
+export type GiftPick = { started: boolean; order: string[]; called: number; lastAt: number };
+export const emptyGiftPick = (): GiftPick => ({ started: false, order: [], called: 0, lastAt: 0 });
+
+export function startGiftPick(s: State) {
+  s.giftPick = { started: true, order: shuffle(Object.keys(s.players)), called: 0, lastAt: 0 };
+}
+
+/** Anyone who arrived since the order was made joins at a random spot among those not yet called. */
+export function syncGiftPick(s: State) {
+  const gp = s.giftPick;
+  if (!gp?.started) return;
+  gp.order = gp.order.filter((id, i) => i < gp.called || id in s.players);
+  for (const id of Object.keys(s.players)) {
+    if (gp.order.includes(id)) continue;
+    const at = gp.called + Math.floor(Math.random() * (gp.order.length - gp.called + 1));
+    gp.order.splice(at, 0, id);
+  }
+}
+
+export function nextGiftPick(s: State): boolean {
+  syncGiftPick(s);
+  const gp = s.giftPick;
+  if (!gp?.started || gp.called >= gp.order.length) return false;
+  gp.called++;
+  gp.lastAt = Date.now();
+  return true;
+}
+
 /** What the host has put up as "happening now"; every phone shows it live. */
 /** activity "custom" uses the host-typed label + emoji (a game made up on the night). */
 export type Now = { activity: string; message: string; at: number; label?: string; emoji?: string };
@@ -64,6 +93,7 @@ export type State = {
   photosUrl: string; // shared album link set by the host ('' = none)
   activeTeams: number; // how many teams are in play (the first N); new guests only go into these
   musicUrl?: string; // Spotify Jam link so guests can queue songs ('' = none)
+  giftPick?: GiftPick;
 };
 
 export const emptySwap = (): Swap => ({ started: false, round: 0, matches: {}, revealed: [], lastAt: 0 });
@@ -420,11 +450,28 @@ export function publicView(s: State) {
     now: s.now,
     photosUrl: s.photosUrl ?? "",
     musicUrl: s.musicUrl ?? "",
-    reveals: [latestReveal(s, "shirt"), latestReveal(s, "gift")].filter(Boolean),
+    reveals: [latestReveal(s, "shirt"), latestReveal(s, "gift"), latestPick(s)].filter(Boolean),
   };
 }
 
 /** The most recent reveal of a swap, for the big pop-up on the TV and phones. */
+/** Latest "go pick a gift" call, shown as a pop-up like the swap reveals. */
+export function latestPick(s: State) {
+  const gp = s.giftPick;
+  if (!gp?.started || !gp.called) return null;
+  const cur = gp.order[gp.called - 1];
+  const next = gp.order[gp.called];
+  return {
+    kind: "pick" as const,
+    at: gp.lastAt,
+    receiver: nameOf(s, cur),
+    from: next ? nameOf(s, next) : "",
+    teaser: "",
+    n: gp.called,
+    total: gp.order.length,
+  };
+}
+
 export function latestReveal(s: State, kind: "shirt" | "gift") {
   const sw = kind === "shirt" ? s.shirtSwap : s.giftSwap;
   const revealed = sw.revealed ?? [];

@@ -22,6 +22,7 @@ type Admin = {
   photosUrl: string;
   musicUrl: string;
   activeTeams: number;
+  giftPick: { started: boolean; called: number; total: number; current: string | null; next: string | null; order: string[] };
 };
 type SwapA = {
   started: boolean;
@@ -206,6 +207,7 @@ function Host() {
       <Panel id="Impostor" tab={tab} setTab={setTab}><ImpostorTab s={s} call={call} busy={busy} /></Panel>
       <Panel id="Mafia" tab={tab} setTab={setTab}><MafiaTab s={s} call={call} busy={busy} /></Panel>
       <Panel id="Swaps" tab={tab} setTab={setTab}>
+        <GiftPickPanel s={s} call={call} busy={busy} />
         <SwapPanel title="👕 Ugly T-shirt swap" sw={s.shirtSwap} kind="shirt" call={call} busy={busy} what="T-shirts" />
         <SwapPanel title="🎁 Secret Santa" sw={s.giftSwap} kind="gift" call={call} busy={busy} what="gifts" />
         <RevealSomeone s={s} call={call} busy={busy} />
@@ -622,7 +624,9 @@ function RevealBar({ s, call, busy }: P) {
     ] as const
   ).filter(([, , sw]) => sw.started && sw.revealedCount < sw.total);
   const leaving = s.players.filter((p) => p.leaving);
-  if (!items.length && !leaving.length) return null;
+  const gp = s.giftPick;
+  const pickLive = gp.started && gp.called < gp.total;
+  if (!items.length && !leaving.length && !pickLive) return null;
   return (
     <div className="reveal-bar">
       {leaving.map((p) => {
@@ -640,11 +644,44 @@ function RevealBar({ s, call, busy }: P) {
           </div>
         );
       })}
+      {pickLive && (
+        <button type="button" className="btn sm" disabled={busy} onClick={() => call("giftPickNext")}>
+          🎁 Next picker ({gp.called + 1}/{gp.total}){gp.next ? ` · ${gp.next}` : ""}
+        </button>
+      )}
       {items.map(([kind, label, sw]) => (
         <button key={kind} type="button" className="btn sm" disabled={busy} onClick={() => call(kind === "shirt" ? "shirtReveal" : "giftReveal")}>
           {label} ({sw.revealedCount + 1}/{sw.total}){sw.upNext ? ` · ${sw.upNext}` : ""}
         </button>
       ))}
+    </div>
+  );
+}
+
+/** Gifts in a pile: random turn order, host calls the next person up. */
+function GiftPickPanel({ s, call, busy }: P) {
+  const ask = useConfirm();
+  const gp = s.giftPick;
+  const [show, setShow] = useState(false);
+  return (
+    <div className="card">
+      <h3>🎁 Gift pick (from the pile)</h3>
+      <p className="muted small">Everyone checked in ({s.players.length}) gets a random turn. Each press calls the next person up on the TV and their phone buzzes. Late arrivals slot into the remaining order automatically.</p>
+      <div className="row" style={{ marginTop: "0.75rem" }}>
+        {!gp.started ? (
+          <button type="button" className="btn" disabled={busy || s.players.length < 2} onClick={() => call("giftPickStart")}>▶️ Make the order</button>
+        ) : (
+          <>
+            <button type="button" className="btn" disabled={busy || gp.called >= gp.total} onClick={() => call("giftPickNext")}>
+              {gp.called >= gp.total ? "✅ Everyone’s picked" : `🎁 Call next picker (${gp.called + 1} of ${gp.total})${gp.next ? ` · ${gp.next}` : ""}`}
+            </button>
+            <button type="button" className="btn ghost sm" onClick={() => setShow((x) => !x)}>{show ? "Hide" : "Show"} order</button>
+            <button type="button" className="btn ghost sm" onClick={async () => (await ask("Reset the gift pick?", "A new random order will be made.", "Reset")) && call("giftPickReset")}>Reset</button>
+          </>
+        )}
+      </div>
+      {gp.started && gp.current && <p className="small" style={{ marginTop: "0.75rem" }}>Now picking: <strong>{gp.current}</strong>{gp.next && <> · Up next: <strong>{gp.next}</strong></>}</p>}
+      {show && <ol className="small">{gp.order.map((n, i) => <li key={i}>{i < gp.called ? "✅ " : ""}{n}</li>)}</ol>}
     </div>
   );
 }

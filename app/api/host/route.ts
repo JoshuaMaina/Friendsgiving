@@ -6,7 +6,11 @@ import {
   reshuffleTeams,
   revealAll,
   revealNext,
+  emptyGiftPick,
+  nextGiftPick,
   revealPerson,
+  startGiftPick,
+  syncGiftPick,
   runSwap,
   startImpostor,
   syncSwaps,
@@ -78,6 +82,19 @@ function adminView(s: State) {
     now: s.now,
     photosUrl: s.photosUrl ?? "",
     musicUrl: s.musicUrl ?? "",
+    giftPick: (() => {
+      const gp = s.giftPick;
+      if (!gp?.started) return { started: false, called: 0, total: 0, current: null, next: null, order: [] as string[] };
+      syncGiftPick(s);
+      return {
+        started: true,
+        called: gp.called,
+        total: gp.order.length,
+        current: gp.called ? name(gp.order[gp.called - 1]) : null,
+        next: gp.order[gp.called] ? name(gp.order[gp.called]) : null,
+        order: gp.order.map(name),
+      };
+    })(),
     activeTeams: s.activeTeams ?? TEAMS.length,
     vote: { open: s.vote.open, count: Object.keys(s.vote.votes).length, results: voteResults(s) },
   };
@@ -254,6 +271,15 @@ export async function POST(req: Request) {
           else s.musicUrl = u.slice(0, 500);
           return null;
         }
+        case "giftPickStart":
+          if (Object.keys(s.players).length < 2) return "Need at least 2 guests";
+          startGiftPick(s);
+          return null;
+        case "giftPickNext":
+          return nextGiftPick(s) ? null : "Everyone’s had a turn";
+        case "giftPickReset":
+          s.giftPick = emptyGiftPick();
+          return null;
         case "resetAll":
           if (body.confirm !== "RESET") return "Type RESET to confirm";
           Object.assign(s, emptyState());

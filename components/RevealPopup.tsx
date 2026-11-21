@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 
 export type Reveal = {
-  kind: "shirt" | "gift";
+  kind: "shirt" | "gift" | "pick";
   at: number;
   receiver: string;
   from: string;
@@ -31,7 +31,7 @@ export function RevealPopup({ reveals, me }: { reveals?: Reveal[] | null; me?: s
     seen.current = latest;
     if (!fresh) return;
     setShown(fresh);
-    if (me && (fresh.receiver === me || fresh.from === me)) {
+    if (me && (fresh.receiver === me || (fresh.kind !== "pick" && fresh.from === me))) {
       try { navigator.vibrate?.([200, 80, 200, 80, 200]); } catch {}
     }
   }, [reveals, me]);
@@ -46,7 +46,21 @@ export function RevealPopup({ reveals, me }: { reveals?: Reveal[] | null; me?: s
   return (
     // Live region stays mounted so screen readers announce each reveal.
     <div role="status" aria-live="polite">
-      {shown && (
+      {shown && shown.kind === "pick" && (
+        <div className="reveal-pop">
+          <div className="reveal-card">
+            <p className="eyebrow" style={{ color: "#13261F" }}>🎁 Gift pick · {shown.n} of {shown.total}</p>
+            <p className="reveal-big">{shown.receiver},</p>
+            <p className="reveal-line">go pick a gift from the pile! 🎁</p>
+            {shown.from && <p className="reveal-teaser" style={{ marginTop: "0.75rem" }}>Up next: {shown.from}</p>}
+            <button type="button" className="btn sm" style={{ marginTop: "1rem", background: "#13261F", color: "#F8F3E6" }} onClick={() => setShown(null)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+      {shown && shown.kind !== "pick" && (
+
         <div className="reveal-pop">
           <div className="reveal-card">
             <p className="eyebrow" style={{ color: "#13261F" }}>

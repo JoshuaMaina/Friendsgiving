@@ -1,5 +1,5 @@
 import { mutate } from "@/lib/store";
-import { pickTeam, syncSwaps } from "@/lib/state";
+import { pickTeam, syncGiftPick, syncSwaps } from "@/lib/state";
 import { bad, cleanName, cleanText, json, validId } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +26,7 @@ export async function POST(req: Request) {
       const team = pickTeam(s);
       s.players[id] = { id, name, team, joinedAt: Date.now(), shirt, gift: !!body.gift };
       syncSwaps(s); // swaps already running? latecomers are added automatically
+      syncGiftPick(s);
       return team;
     });
     return json({ team });
