@@ -695,10 +695,11 @@ function SpecialGift({ s, call, busy }: P) {
   const guess = s.players.find((p) => /daniel/i.test(p.name));
   const [id, setId] = useState(guess?.id ?? "");
   const [msg, setMsg] = useState(DANIEL_MESSAGE);
+  const [label, setLabel] = useState("Daniel G");
   return (
     <form
       style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid rgba(248,243,230,.15)" }}
-      onSubmit={async (e) => { e.preventDefault(); if (await call("giftPickSpecial", { playerId: id, message: msg })) await call("giftPickNext"); }}
+      onSubmit={async (e) => { e.preventDefault(); if (await call("giftPickSpecial", { playerId: id, message: msg, label })) await call("giftPickNext"); }}
     >
       <h3>💍 Special gift</h3>
       <p className="muted small">Calls this guest up right now with your message on the TV (it stays up for a minute). Their normal turn stays in the order, so they still pick again later.</p>
@@ -707,9 +708,17 @@ function SpecialGift({ s, call, busy }: P) {
         <option value="">Choose…</option>
         {s.players.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
       </select>
+      <label htmlFor="sp-label">Name on the TV</label>
+      <input id="sp-label" name="sp-label" type="text" maxLength={40} value={label} onChange={(e) => setLabel(e.target.value)} aria-describedby="sp-label-hint" />
+      <p id="sp-label-hint" className="hint">Shown instead of the name they joined with. Leave empty to use their own.</p>
       <label htmlFor="sp-msg">Message</label>
       <textarea id="sp-msg" name="sp-msg" rows={4} maxLength={400} value={msg} onChange={(e) => setMsg(e.target.value)} className="textarea" />
-      <button type="submit" className="btn sm" style={{ marginTop: "0.75rem" }} disabled={busy || !id}>💍 Call them up now</button>
+      <div className="row" style={{ marginTop: "0.75rem" }}>
+        <button type="submit" className="btn sm" disabled={busy || !id}>💍 Call them up now</button>
+        <button type="button" className="btn ghost sm" disabled={busy || !s.giftPick.called} onClick={() => call("giftPickReshow", { message: msg, label })}>
+          🔁 Fix &amp; re-show the last call (no extra turn)
+        </button>
+      </div>
     </form>
   );
 }

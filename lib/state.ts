@@ -56,6 +56,8 @@ export type GiftPick = {
   lastAt: number;
   /** order index -> a special message for that turn (e.g. a dedicated gift) */
   notes?: Record<string, string>;
+  /** order index -> name to show on screen instead of the guest's own (joke) name */
+  labels?: Record<string, string>;
 };
 export const emptyGiftPick = (): GiftPick => ({ started: false, order: [], called: 0, lastAt: 0 });
 
@@ -79,7 +81,7 @@ export function syncGiftPick(s: State) {
  * Call someone up next for a special gift with a message, without losing their normal turn.
  * Starts the pick order first if needed.
  */
-export function specialGiftPick(s: State, id: string, message: string) {
+export function specialGiftPick(s: State, id: string, message: string, label = "") {
   if (!s.giftPick?.started) startGiftPick(s);
   syncGiftPick(s);
   const gp = s.giftPick!;
@@ -89,6 +91,23 @@ export function specialGiftPick(s: State, id: string, message: string) {
   for (const [k, v] of Object.entries(gp.notes ?? {})) notes[String(Number(k) >= at ? Number(k) + 1 : Number(k))] = v;
   notes[String(at)] = message;
   gp.notes = notes;
+  const labels: Record<string, string> = {};
+  for (const [k, v] of Object.entries(gp.labels ?? {})) labels[String(Number(k) >= at ? Number(k) + 1 : Number(k))] = v;
+  if (label) labels[String(at)] = label;
+  gp.labels = labels;
+}
+
+/** Change the name/message on the turn just called and show it on the TV again (no extra turn). */
+export function reshowGiftPick(s: State, message: string, label: string): boolean {
+  const gp = s.giftPick;
+  if (!gp?.started || !gp.called) return false;
+  const k = String(gp.called - 1);
+  gp.notes = { ...(gp.notes ?? {}), [k]: message };
+  gp.labels = { ...(gp.labels ?? {}) };
+  if (label) gp.labels[k] = label;
+  else delete gp.labels[k];
+  gp.lastAt = Date.now();
+  return true;
 }
 
 export function nextGiftPick(s: State): boolean {
@@ -487,7 +506,7 @@ export function latestPick(s: State) {
   return {
     kind: "pick" as const,
     at: gp.lastAt,
-    receiver: nameOf(s, cur),
+    receiver: gp.labels?.[String(gp.called - 1)] || nameOf(s, cur),
     from: next ? nameOf(s, next) : "",
     teaser: "",
     message: gp.notes?.[String(gp.called - 1)] ?? "",
