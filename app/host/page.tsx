@@ -665,7 +665,7 @@ function GiftPickPanel({ s, call, busy }: P) {
   const [show, setShow] = useState(false);
   return (
     <div className="card">
-      <h3>🎁 Gift pick (from the pile)</h3>
+      <h3>🎁 Gift pick (from the tree)</h3>
       <p className="muted small">Everyone checked in ({s.players.length}) gets a random turn. Each press calls the next person up on the TV and their phone buzzes. Late arrivals slot into the remaining order automatically.</p>
       <div className="row" style={{ marginTop: "0.75rem" }}>
         {!gp.started ? (

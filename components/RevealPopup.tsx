@@ -60,7 +60,7 @@ export function RevealPopup({ reveals, me }: { reveals?: Reveal[] | null; me?: s
               <>
                 <p className="eyebrow" style={{ color: "#13261F" }}>🎁 Gift pick · {shown.n} of {shown.total}</p>
                 <p className="reveal-big">{shown.receiver},</p>
-                <p className="reveal-line">go pick a gift from the pile! 🎁</p>
+                <p className="reveal-line">go pick a gift from the tree! 🎄🎁</p>
               </>
             )}
             {shown.from && <p className="reveal-teaser" style={{ marginTop: "0.75rem" }}>Up next: {shown.from}</p>}
