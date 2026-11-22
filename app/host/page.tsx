@@ -22,7 +22,7 @@ type Admin = {
   photosUrl: string;
   musicUrl: string;
   activeTeams: number;
-  giftPick: { started: boolean; called: number; total: number; current: string | null; next: string | null; order: string[] };
+  giftPick: { started: boolean; called: number; rawCalled: number; total: number; current: string | null; next: string | null; order: string[] };
 };
 type SwapA = {
   started: boolean;
@@ -681,7 +681,7 @@ function GiftPickPanel({ s, call, busy }: P) {
         )}
       </div>
       {gp.started && gp.current && <p className="small" style={{ marginTop: "0.75rem" }}>Now picking: <strong>{gp.current}</strong>{gp.next && <> · Up next: <strong>{gp.next}</strong></>}</p>}
-      {show && <ol className="small">{gp.order.map((n, i) => <li key={i}>{i < gp.called ? "✅ " : ""}{n}</li>)}</ol>}
+      {show && <ol className="small">{gp.order.map((n, i) => <li key={i}>{i < gp.rawCalled ? "✅ " : ""}{n}</li>)}</ol>}
       <SpecialGift s={s} call={call} busy={busy} />
     </div>
   );

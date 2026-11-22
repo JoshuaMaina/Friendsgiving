@@ -8,6 +8,7 @@ import {
   revealNext,
   emptyGiftPick,
   nextGiftPick,
+  pickCounts,
   revealPerson,
   reshowGiftPick,
   specialGiftPick,
@@ -86,12 +87,13 @@ function adminView(s: State) {
     musicUrl: s.musicUrl ?? "",
     giftPick: (() => {
       const gp = s.giftPick;
-      if (!gp?.started) return { started: false, called: 0, total: 0, current: null, next: null, order: [] as string[] };
+      if (!gp?.started) return { started: false, called: 0, rawCalled: 0, total: 0, current: null, next: null, order: [] as string[] };
       syncGiftPick(s);
       return {
         started: true,
-        called: gp.called,
-        total: gp.order.length,
+        called: pickCounts(gp).done,
+        rawCalled: gp.called,
+        total: pickCounts(gp).total,
         current: gp.called ? name(gp.order[gp.called - 1]) : null,
         next: gp.order[gp.called] ? name(gp.order[gp.called]) : null,
         order: gp.order.map(name),

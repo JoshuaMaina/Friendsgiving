@@ -110,6 +110,13 @@ export function reshowGiftPick(s: State, message: string, label: string): boolea
   return true;
 }
 
+/** Turn counts that leave out special call-ups, so the display reads "1 of 31" for normal picks. */
+export function pickCounts(gp: GiftPick) {
+  const specials = Object.keys(gp.notes ?? {}).map(Number);
+  const specialsCalled = specials.filter((i) => i < gp.called).length;
+  return { done: gp.called - specialsCalled, total: gp.order.length - specials.length };
+}
+
 export function nextGiftPick(s: State): boolean {
   syncGiftPick(s);
   const gp = s.giftPick;
@@ -510,8 +517,8 @@ export function latestPick(s: State) {
     from: next ? nameOf(s, next) : "",
     teaser: "",
     message: gp.notes?.[String(gp.called - 1)] ?? "",
-    n: gp.called,
-    total: gp.order.length,
+    n: pickCounts(gp).done,
+    total: pickCounts(gp).total,
   };
 }
 
