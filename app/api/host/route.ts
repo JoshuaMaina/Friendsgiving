@@ -9,6 +9,7 @@ import {
   emptyGiftPick,
   nextGiftPick,
   revealPerson,
+  specialGiftPick,
   startGiftPick,
   syncGiftPick,
   runSwap,
@@ -275,6 +276,12 @@ export async function POST(req: Request) {
           if (Object.keys(s.players).length < 2) return "Need at least 2 guests";
           startGiftPick(s);
           return null;
+        case "giftPickSpecial": {
+          const id = String(body.playerId || "");
+          if (!s.players[id]) return "Pick a guest";
+          specialGiftPick(s, id, String(body.message || "").trim().slice(0, 400));
+          return null;
+        }
         case "giftPickNext":
           return nextGiftPick(s) ? null : "Everyone’s had a turn";
         case "giftPickReset":

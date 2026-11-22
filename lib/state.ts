@@ -49,7 +49,14 @@ export type Mafia = {
 export type Vote = { open: boolean; votes: Record<string, string> };
 
 /** Gifts dropped in a pile: guests take turns going up to pick one, in a random order. */
-export type GiftPick = { started: boolean; order: string[]; called: number; lastAt: number };
+export type GiftPick = {
+  started: boolean;
+  order: string[];
+  called: number;
+  lastAt: number;
+  /** order index -> a special message for that turn (e.g. a dedicated gift) */
+  notes?: Record<string, string>;
+};
 export const emptyGiftPick = (): GiftPick => ({ started: false, order: [], called: 0, lastAt: 0 });
 
 export function startGiftPick(s: State) {
@@ -66,6 +73,22 @@ export function syncGiftPick(s: State) {
     const at = gp.called + Math.floor(Math.random() * (gp.order.length - gp.called + 1));
     gp.order.splice(at, 0, id);
   }
+}
+
+/**
+ * Call someone up next for a special gift with a message, without losing their normal turn.
+ * Starts the pick order first if needed.
+ */
+export function specialGiftPick(s: State, id: string, message: string) {
+  if (!s.giftPick?.started) startGiftPick(s);
+  syncGiftPick(s);
+  const gp = s.giftPick!;
+  const at = gp.called;
+  gp.order.splice(at, 0, id);
+  const notes: Record<string, string> = {};
+  for (const [k, v] of Object.entries(gp.notes ?? {})) notes[String(Number(k) >= at ? Number(k) + 1 : Number(k))] = v;
+  notes[String(at)] = message;
+  gp.notes = notes;
 }
 
 export function nextGiftPick(s: State): boolean {
@@ -467,6 +490,7 @@ export function latestPick(s: State) {
     receiver: nameOf(s, cur),
     from: next ? nameOf(s, next) : "",
     teaser: "",
+    message: gp.notes?.[String(gp.called - 1)] ?? "",
     n: gp.called,
     total: gp.order.length,
   };

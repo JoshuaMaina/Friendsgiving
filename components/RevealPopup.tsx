@@ -9,6 +9,7 @@ export type Reveal = {
   teaser: string;
   n: number;
   total: number;
+  message?: string;
 };
 
 /**
@@ -38,7 +39,7 @@ export function RevealPopup({ reveals, me }: { reveals?: Reveal[] | null; me?: s
 
   useEffect(() => {
     if (!shown) return;
-    const t = setTimeout(() => setShown(null), 15000);
+    const t = setTimeout(() => setShown(null), shown.message ? 60000 : 15000);
     return () => clearTimeout(t);
   }, [shown]);
 
@@ -49,9 +50,19 @@ export function RevealPopup({ reveals, me }: { reveals?: Reveal[] | null; me?: s
       {shown && shown.kind === "pick" && (
         <div className="reveal-pop">
           <div className="reveal-card">
-            <p className="eyebrow" style={{ color: "#13261F" }}>🎁 Gift pick · {shown.n} of {shown.total}</p>
-            <p className="reveal-big">{shown.receiver},</p>
-            <p className="reveal-line">go pick a gift from the pile! 🎁</p>
+            {shown.message ? (
+              <>
+                <p className="eyebrow" style={{ color: "#13261F" }}>🎁 A special gift</p>
+                <p className="reveal-big">{shown.receiver} 💍</p>
+                <p className="reveal-line" style={{ whiteSpace: "pre-line" }}>{shown.message}</p>
+              </>
+            ) : (
+              <>
+                <p className="eyebrow" style={{ color: "#13261F" }}>🎁 Gift pick · {shown.n} of {shown.total}</p>
+                <p className="reveal-big">{shown.receiver},</p>
+                <p className="reveal-line">go pick a gift from the pile! 🎁</p>
+              </>
+            )}
             {shown.from && <p className="reveal-teaser" style={{ marginTop: "0.75rem" }}>Up next: {shown.from}</p>}
             <button type="button" className="btn sm" style={{ marginTop: "1rem", background: "#13261F", color: "#F8F3E6" }} onClick={() => setShown(null)}>
               Close

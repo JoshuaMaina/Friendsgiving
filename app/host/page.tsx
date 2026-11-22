@@ -682,7 +682,35 @@ function GiftPickPanel({ s, call, busy }: P) {
       </div>
       {gp.started && gp.current && <p className="small" style={{ marginTop: "0.75rem" }}>Now picking: <strong>{gp.current}</strong>{gp.next && <> · Up next: <strong>{gp.next}</strong></>}</p>}
       {show && <ol className="small">{gp.order.map((n, i) => <li key={i}>{i < gp.called ? "✅ " : ""}{n}</li>)}</ol>}
+      <SpecialGift s={s} call={call} busy={busy} />
     </div>
+  );
+}
+
+const DANIEL_MESSAGE =
+  "We’re so happy for you, you deserve all the love in the world. Congratulations on getting married! 🥂\nThis first gift is just for you, and you still get another one later 🎁";
+
+/** Call one guest up next for a dedicated gift, with a message on the TV. */
+function SpecialGift({ s, call, busy }: P) {
+  const guess = s.players.find((p) => /daniel/i.test(p.name));
+  const [id, setId] = useState(guess?.id ?? "");
+  const [msg, setMsg] = useState(DANIEL_MESSAGE);
+  return (
+    <form
+      style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid rgba(248,243,230,.15)" }}
+      onSubmit={async (e) => { e.preventDefault(); if (await call("giftPickSpecial", { playerId: id, message: msg })) await call("giftPickNext"); }}
+    >
+      <h3>💍 Special gift</h3>
+      <p className="muted small">Calls this guest up right now with your message on the TV (it stays up for a minute). Their normal turn stays in the order, so they still pick again later.</p>
+      <label htmlFor="sp-who">Guest</label>
+      <select id="sp-who" name="sp-who" required value={id} onChange={(e) => setId(e.target.value)}>
+        <option value="">Choose…</option>
+        {s.players.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+      </select>
+      <label htmlFor="sp-msg">Message</label>
+      <textarea id="sp-msg" name="sp-msg" rows={4} maxLength={400} value={msg} onChange={(e) => setMsg(e.target.value)} className="textarea" />
+      <button type="submit" className="btn sm" style={{ marginTop: "0.75rem" }} disabled={busy || !id}>💍 Call them up now</button>
+    </form>
   );
 }
 
